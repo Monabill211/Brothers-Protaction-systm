@@ -7,8 +7,8 @@ import {
   MdVisibility,
   MdVisibilityOff,
 } from 'react-icons/md'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../auth/auth-context'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../auth/auth-context'
 
 type StaffRole = 'branch_manager' | 'sales'
 
@@ -96,7 +96,7 @@ async function fetchAccounts() {
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
   })
 
-  const accounts: Account[] = (profilesRes.data ?? []).map((row) => {
+  const accounts: Account[] = (profilesRes.data ?? []).map((row:any) => {
     const raw = row.user_credentials as unknown
     const cred = (Array.isArray(raw) ? raw[0] : raw) as
       | { email: string | null; password_plain: string | null }
