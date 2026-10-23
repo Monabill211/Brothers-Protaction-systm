@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Cairo', system-ui, sans-serif;
+
+  /* Brand red */
+  --color-brand-50:  #fff1f1;
+  --color-brand-100: #ffdfdf;
+  --color-brand-400: #f26363;
+  --color-brand-500: #e11d2e;
+  --color-brand-600: #c8102e;
+  --color-brand-700: #a30d26;
+  --color-brand-900: #5c0715;
+
+  /* Brand black / greys */
+  --color-ink-950: #0a0a0a;
+  --color-ink-900: #121212;
+  --color-ink-800: #1c1c1c;
+  --color-ink-700: #2a2a2a;
+  --color-ink-400: #8a8a8a;
+  --color-ink-100: #ededed;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
