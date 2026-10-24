@@ -12,6 +12,7 @@ import Expenses from './pages/branch/Expenses'
 import Inventory from './pages/branch/Inventory'
 import Attendance from './pages/branch-sells/Attendance'
 import Customers from './pages/branch-sells/Customers'
+import NewInvoice from './pages/branch-sells/NewInvoice'
 import ProtectedRoute from './auth/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import { ROLE_HOME, type Role } from './auth/roles'
@@ -29,6 +30,7 @@ const PAGES: Record<string, ReactElement> = {
   '/branch/inventory': <Inventory />,
   '/branch-sells/attendance': <Attendance />,
   '/branch-sells/customers': <Customers />,
+  '/branch-sells/new-invoice': <NewInvoice />,
   '/owner/settings': <Settings />,
 }
 

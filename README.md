@@ -1,55 +1,68 @@
-# Brothers Protection
+# Brothers Protection — نظام الإدارة
 
 React + Vite + TypeScript + Tailwind v4 + Supabase.
+ثلاث أدوار: **المناجر (owner)** و**مدير الفرع (branch)** و**السيلز (branch-sells)**، وثلاث فروع كل فرع معزول عن التاني.
 
-## 1) Install
-
-```bash
-npm create vite@latest brothers-protection -- --template react-ts
-cd brothers-protection
-npm install
-npm i tailwindcss @tailwindcss/vite @supabase/supabase-js @tanstack/react-query react-router-dom react-hook-form zod @hookform/resolvers @tanstack/react-table recharts date-fns sonner clsx tailwind-merge @fontsource/cairo react-icons --legacy-peer-deps
-```
-
-Then copy the files of this folder over the project (replace existing ones)
-and delete `src/App.css`.
-
-## 2) Environment
-
-Copy `.env.example` to `.env` and fill:
-
-- `VITE_SUPABASE_URL`: Supabase > Project Settings > API > Project URL
-- `VITE_SUPABASE_ANON_KEY`: same page > `anon` `public` key
-
-Never put the `service_role` key in a `VITE_` variable.
-
-## 3) Database
-
-Run in Supabase > SQL Editor, in this order:
-
-1. `sql/01_owner_tables.sql`
-2. `sql/02_branch_manager_tables.sql`
-3. `sql/03_sales_tables.sql`
-
-Then create the first owner (instructions at the end of file 01).
-
-## 4) Run
+## تشغيل محلي
 
 ```bash
+npm install          # فيه .npmrc بيحل مشكلة ERESOLVE تلقائي
+cp .env.example .env # وحط بيانات Supabase بتاعتك
 npm run dev
 ```
 
-## Structure
+`.env`:
 
 ```
-src/
-  auth/
-    roles.ts            roles + home route of each role
-    auth-context.ts     context, types, useAuth()
-    AuthProvider.tsx    session + profile (role, branch)
-    ProtectedRoute.tsx  route guard by role
-  lib/supabase.ts       Supabase client
-  pages/Login.tsx       login page
-  App.tsx               routes
-  main.tsx              providers
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
+
+ماتحطش مفتاح `service_role` / `secret` هنا أبدًا، أي متغير بيبدأ بـ `VITE_` بيظهر في المتصفح.
+
+## Supabase
+
+1. في **SQL Editor** شغّل الملفات اللي في `supabase/sql/` بالترتيب (01 → 08)، واحد واحد.
+2. اعمل يوزر المناجر من Authentication ← Users ← Add user (فعّل Auto Confirm User)، وبعدين شغّل:
+
+```sql
+insert into public.profiles (id, full_name, role)
+values ('UUID-بتاع-اليوزر', 'المناجر', 'owner');
+
+insert into public.user_credentials (user_id, email, password_plain)
+values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
+```
+
+3. ارفع الـ Edge Function الموجودة في `supabase/functions/manage-user/index.ts`
+   (Edge Functions ← Deploy a new function ← Via Editor، وقفل Verify JWT).
+   الـ Dashboard بيدّيها اسم تلقائي (مثلاً `rapid-responder`)، فلو اسمها مختلف عن اللي في
+   `src/pages/owner/Settings.tsx` (دالة `callManageUser`) غيّر الاسم هناك.
+4. من صفحة **الإعدادات** عند المناجر اعمل حساب مدير الفرع وحساب السيلز لكل فرع.
+
+## النشر على Vercel
+
+- الإعدادات تلقائية (Vite). ملف `vercel.json` بيخلّي الروابط زي `/owner` تشتغل عند الريفريش.
+- من Project Settings ← **Environment Variables** ضيف `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY`، وبعدها **Redeploy**.
+  من غيرهم الموقع بيفتح فاضي.
+- `VITE_DEV_ROLE` للتطوير بس، ماتحطهوش على Vercel.
+
+## الصفحات
+
+| الدور | المسار | الصفحة |
+|---|---|---|
+| المناجر | `/owner/finance` | الملخصات المالية (يومي/أسبوعي/شهري/سنوي لكل فرع) |
+| المناجر | `/owner/operations` | العمليات (كل الفواتير: مين عمل إيه والصافي) |
+| المناجر | `/owner/settings` | حسابات مدير الفرع والسيلز وتغيير الباسوردات |
+| مدير الفرع | `/branch/employees` | الموظفين واليومية ونسب الوش/الضهر/الجنب |
+| مدير الفرع | `/branch/payroll` | القبض الأسبوعي (اعتماد + طباعة PDF) |
+| مدير الفرع | `/branch/expenses` | المصروفات مع السبب |
+| مدير الفرع | `/branch/inventory` | المخزون وحركته |
+| السيلز | `/branch-sells/new-invoice` | فاتورة جديدة (عميل + شغل + مصروفات + خصم رول) |
+| السيلز | `/branch-sells/attendance` | حضور وانصراف الموظفين |
+| السيلز | `/branch-sells/customers` | البحث عن عميل وفواتيره القديمة |
+
+## ملاحظات للتطوير
+
+- Tailwind للـ layout والألوان فقط، وكل الـ padding والـ margin والـ gap بتتكتب inline (`style`)، ومعاك helper في `src/lib/spacing.ts`.
+- صلاحيات الفروع بتتطبق من قاعدة البيانات (RLS)، مش من الواجهة بس.
+- وضع التجربة: ضيف `VITE_DEV_ROLE=owner` في `.env` وشغّل `npm run dev` عشان تشوف صفحات دور من غير دخول (ملوش بيانات حقيقية).
