@@ -52,9 +52,15 @@ export const NAV: Record<Role, NavItem[]> = {
   branch_manager: [
     { to: '/branch', label: 'الرئيسية', description: '', icon: MdHome },
     {
+      to: '/branch/new-invoice',
+      label: 'فاتورة جديدة',
+      description: 'فاتورة حماية أو فاتورة عادية يدوي، زي السيلز',
+      icon: MdAttachMoney,
+    },
+    {
       to: '/branch/employees',
       label: 'الموظفين والنسب',
-      description: 'أسماء الموظفين واليومية، ونسب الوش والضهر والجنب',
+      description: 'أسماء الموظفين واليومية، ونسب الوش والضهر والجنب والعزل وفك وتركيب',
       icon: MdBadge,
     },
     {
@@ -89,6 +95,12 @@ export const NAV: Record<Role, NavItem[]> = {
       label: 'الحضور والانصراف',
       description: 'تسجيل حضور وانصراف موظفي المكان',
       icon: MdEventAvailable,
+    },
+    {
+      to: '/branch-sells/expenses',
+      label: 'المصروفات',
+      description: 'تسجيل مصروف النهارده مع السبب',
+      icon: MdPayments,
     },
     {
       to: '/branch-sells/customers',

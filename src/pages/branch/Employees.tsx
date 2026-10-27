@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
+import { SECTIONS, bySection, type Section } from '../../lib/sections'
 
 type Employee = {
   id: string
@@ -14,15 +15,7 @@ type Employee = {
   is_active: boolean
 }
 
-type Section = 'front' | 'back' | 'side_one' | 'side_two'
 type Rates = Partial<Record<Section, number>>
-
-const SECTIONS: { key: Section; label: string }[] = [
-  { key: 'front', label: 'الوش' },
-  { key: 'back', label: 'الضهر' },
-  { key: 'side_one', label: 'جنب واحد' },
-  { key: 'side_two', label: 'جنب اتنين' },
-]
 
 // Tailwind للـ layout والألوان بس، والـ padding/margin/gap كلها inline
 const cardClass = 'rounded-2xl border border-ink-700 bg-ink-900'
@@ -204,12 +197,11 @@ function AddEmployeeForm() {
 
 function RatesCard({ branchId, rates }: { branchId: string; rates: Rates }) {
   const queryClient = useQueryClient()
-  const [values, setValues] = useState<Record<Section, string>>(() => ({
-    front: rates.front?.toString() ?? '',
-    back: rates.back?.toString() ?? '',
-    side_one: rates.side_one?.toString() ?? '',
-    side_two: rates.side_two?.toString() ?? '',
-  }))
+  const [values, setValues] = useState<Record<Section, string>>(() => {
+    const initial = bySection('')
+    for (const s of SECTIONS) initial[s.key] = rates[s.key]?.toString() ?? ''
+    return initial
+  })
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -239,7 +231,7 @@ function RatesCard({ branchId, rates }: { branchId: string; rates: Rates }) {
       return Number.isNaN(n) || n < 0
     })
     if (invalid) {
-      toast.error('اكتب نسبة كل جزء بشكل صحيح')
+      toast.error('اكتب نسبة كل جزء وخدمة بشكل صحيح')
       return
     }
     mutation.mutate()
@@ -254,7 +246,7 @@ function RatesCard({ branchId, rates }: { branchId: string; rates: Rates }) {
       <div>
         <h2 className="font-bold">نسب الشغل</h2>
         <p className="text-sm text-ink-400" style={{ marginTop: 4 }}>
-          المبلغ الثابت اللي الموظف بياخده على كل جزء في العربية، وبيتحسب منه
+          المبلغ الثابت اللي الموظف بياخده على كل جزء أو خدمة (الوش والضهر والجنب والعزل وفك وتركيب)، وبيتحسب منه
           القبض الأسبوعي.
         </p>
       </div>
@@ -455,7 +447,7 @@ export default function Employees() {
       <section>
         <h1 className="text-2xl font-bold sm:text-3xl">الموظفين والنسب</h1>
         <p className="text-ink-400" style={{ marginTop: 8 }}>
-          أسماء الموظفين واليومية بتاعتهم، ونسب الوش والضهر والجنب.
+          أسماء الموظفين واليومية بتاعتهم، ونسب الوش والضهر والجنب والعزل وفك وتركيب.
         </p>
       </section>
 

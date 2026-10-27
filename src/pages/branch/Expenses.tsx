@@ -21,6 +21,7 @@ type Expense = {
   amount: number
   reason: string
   expense_date: string
+  by: string | null
 }
 
 const QUICK_REASONS = ['إيجار', 'كهربا', 'مياه', 'صيانة', 'أدوات']
@@ -55,19 +56,26 @@ function toNumber(value: string) {
 async function fetchExpenses(from: string, to: string): Promise<Expense[]> {
   const { data, error } = await supabase
     .from('expenses')
-    .select('id, amount, reason, expense_date')
+    .select('id, amount, reason, expense_date, profiles(full_name)')
     .gte('expense_date', from)
     .lte('expense_date', to)
     .order('expense_date', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw error
 
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    amount: Number(r.amount),
-    reason: r.reason as string,
-    expense_date: r.expense_date as string,
-  }))
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => {
+    const prof = (Array.isArray(r.profiles) ? r.profiles[0] : r.profiles) as
+      | { full_name?: string }
+      | null
+      | undefined
+    return {
+      id: r.id as string,
+      amount: Number(r.amount),
+      reason: r.reason as string,
+      expense_date: r.expense_date as string,
+      by: prof?.full_name ?? null,
+    }
+  })
 }
 
 // ---------- مبلغ بالجنيه ----------
@@ -267,6 +275,7 @@ function ExpenseRow({ expense }: { expense: Expense }) {
           {format(parseISO(expense.expense_date), 'EEEE d MMMM yyyy', {
             locale: ar,
           })}
+          {expense.by ? ` • سجّله: ${expense.by}` : ''}
         </p>
       </div>
 

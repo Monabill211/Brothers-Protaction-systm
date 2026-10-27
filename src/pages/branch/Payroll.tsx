@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
+import { SECTION_LABEL, SECTION_ORDER, type Section } from '../../lib/sections'
 
 type Employee = {
   id: string
@@ -27,16 +28,6 @@ type Employee = {
   daily_rate: number
   is_active: boolean
 }
-
-type Section = 'front' | 'back' | 'side_one' | 'side_two'
-
-const SECTION_LABEL: Record<string, string> = {
-  front: 'الوش',
-  back: 'الضهر',
-  side_one: 'جنب واحد',
-  side_two: 'جنب اتنين',
-}
-const SECTION_ORDER = ['front', 'back', 'side_one', 'side_two']
 
 type WorkLine = {
   section: Section
@@ -361,11 +352,15 @@ function SlipCard({
   slip,
   approved,
   changed,
+  approving,
+  onApprove,
   onPrint,
 }: {
   slip: Slip
   approved: boolean
   changed: boolean
+  approving: boolean
+  onApprove: () => void
   onPrint: () => void
 }) {
   return (
@@ -416,20 +411,38 @@ function SlipCard({
           className="rounded-lg bg-amber-500/10 text-xs text-amber-300"
           style={pad(10, 12)}
         >
-          فيه تغييرات اتسجلت بعد الاعتماد. دوس &quot;تحديث الاعتماد&quot; فوق
+          فيه تغييرات اتسجلت بعد الاعتماد. دوس &quot;تحديث الاعتماد&quot; تحت
           عشان الأرقام تتحدّث.
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={onPrint}
-        className={ghostBtnClass}
-        style={{ ...pad(10, 16), gap: 6 }}
-      >
-        <MdPrint size={18} />
-        طباعة / PDF
-      </button>
+      <div className="flex" style={{ gap: 8 }}>
+        {(!approved || changed) && (
+          <button
+            type="button"
+            disabled={approving}
+            onClick={onApprove}
+            className={`${primaryBtnClass} flex-1`}
+            style={{ ...pad(10, 16), gap: 6 }}
+          >
+            <MdCheckCircle size={18} />
+            {approving
+              ? 'جاري الاعتماد...'
+              : approved
+                ? 'تحديث الاعتماد'
+                : 'اعتماد القبض'}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onPrint}
+          className={`${ghostBtnClass} flex-1`}
+          style={{ ...pad(10, 16), gap: 6 }}
+        >
+          <MdPrint size={18} />
+          طباعة / PDF
+        </button>
+      </div>
     </div>
   )
 }
@@ -488,28 +501,31 @@ export default function Payroll() {
 
   const grandTotal = round2(items.reduce((sum, i) => sum + i.slip.total, 0))
   const approvedCount = items.filter((i) => i.saved).length
-  const allApproved = items.length > 0 && approvedCount === items.length
-  const anyChanged = items.some((i) => i.changed)
+  // الموظف اللي بيتعتمد دلوقتي (عشان نقفل زرار الكارت بتاعه بس)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
 
+  // اعتماد موظف واحد في المرة
   const approveMutation = useMutation({
-    mutationFn: async () => {
-      const rows = items.map(({ live }) => ({
-        branch_id: branchId,
-        employee_id: live.employee.id,
-        week_start: fromStr,
-        week_end: toStr,
-        days_worked: live.days,
-        days_amount: live.daysAmount,
-        work_amount: live.workAmount,
-        details: { daily_rate: live.dailyRate, work: live.workLines },
-      }))
-      const { error } = await supabase
-        .from('payroll_runs')
-        .upsert(rows, { onConflict: 'employee_id,week_start' })
+    mutationFn: async (live: Slip) => {
+      const { error } = await supabase.from('payroll_runs').upsert(
+        {
+          branch_id: branchId,
+          employee_id: live.employee.id,
+          week_start: fromStr,
+          week_end: toStr,
+          days_worked: live.days,
+          days_amount: live.daysAmount,
+          work_amount: live.workAmount,
+          details: { daily_rate: live.dailyRate, work: live.workLines },
+        },
+        { onConflict: 'employee_id,week_start' }
+      )
       if (error) throw error
     },
-    onSuccess: () => {
-      toast.success('تم اعتماد القبض')
+    onMutate: (live) => setApprovingId(live.employee.id),
+    onSettled: () => setApprovingId(null),
+    onSuccess: (_data, live) => {
+      toast.success(`تم اعتماد ${live.employee.full_name}`)
       queryClient.invalidateQueries({ queryKey: ['payroll-week'] })
     },
     onError: (e) => {
@@ -627,22 +643,6 @@ export default function Payroll() {
             <div className="flex flex-col sm:flex-row" style={{ gap: 8 }}>
               <button
                 type="button"
-                disabled={approveMutation.isPending}
-                onClick={() => approveMutation.mutate()}
-                className={primaryBtnClass}
-                style={{ ...pad(12, 20), gap: 6 }}
-              >
-                <MdCheckCircle size={20} />
-                {approveMutation.isPending
-                  ? 'جاري الاعتماد...'
-                  : allApproved && !anyChanged
-                    ? 'إعادة الاعتماد'
-                    : approvedCount > 0
-                      ? 'تحديث الاعتماد'
-                      : 'اعتماد القبض'}
-              </button>
-              <button
-                type="button"
                 onClick={() =>
                   printSlips(
                     items.map((i) => i.slip),
@@ -667,15 +667,18 @@ export default function Payroll() {
                 slip={i.slip}
                 approved={!!i.saved}
                 changed={i.changed}
+                approving={approvingId === i.slip.employee.id}
+                onApprove={() => approveMutation.mutate(i.live)}
                 onPrint={() => printSlips([i.slip], week.branchName, period)}
               />
             ))}
           </section>
 
           <p className="text-xs text-ink-400">
-            الحضور بيتحسب من تسجيل السيلز للموظفين، والشغل من الفواتير. بعد
-            الاعتماد الأرقام بتتثبّت وبتظهر في الملخصات المالية بتاعت المناجر. في
-            نافذة الطباعة اختار &quot;Save as PDF&quot; عشان تطلع ملف PDF.
+            الحضور بيتحسب من تسجيل السيلز للموظفين، والشغل من الفواتير. اعتمد
+            كل موظف لوحده من الكارت بتاعه، وبعد الاعتماد الأرقام بتتثبّت وبتظهر
+            في الملخصات المالية بتاعت المناجر. في نافذة الطباعة اختار
+            &quot;Save as PDF&quot; عشان تطلع ملف PDF.
           </p>
         </>
       )}

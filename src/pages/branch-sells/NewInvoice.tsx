@@ -1,39 +1,23 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import {
-  MdAdd,
-  MdCheckCircle,
-  MdDeleteOutline,
-  MdPrint,
-  MdSearch,
-} from 'react-icons/md'
+import { MdAdd, MdCheckCircle, MdDeleteOutline, MdPrint } from 'react-icons/md'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
-import { cleanTerm } from '../../lib/search'
 import MoneyInput from '../../components/MoneyInput'
+import CustomerPicker, { type CustomerHit } from '../../components/CustomerPicker'
+import InvoiceKindSwitch, {
+  type InvoiceKind,
+} from '../../components/InvoiceKindSwitch'
+import ManualInvoice from './ManualInvoice'
 import {
-  SECTION_LABEL,
   printCustomerInvoice,
   printInternalInvoice,
   type PrintableInvoice,
 } from '../../lib/printInvoice'
-
-type Section = 'front' | 'back' | 'side_one' | 'side_two'
-
-const SECTIONS: { key: Section; label: string }[] = [
-  { key: 'front', label: SECTION_LABEL.front },
-  { key: 'back', label: SECTION_LABEL.back },
-  { key: 'side_one', label: SECTION_LABEL.side_one },
-  { key: 'side_two', label: SECTION_LABEL.side_two },
-]
+import { SECTIONS, bySection, type Section } from '../../lib/sections'
 
 type Employee = {
   id: string
@@ -45,8 +29,6 @@ type Employee = {
 type Item = { id: string; name: string; quantity: number; unit: string }
 
 type Rates = Partial<Record<Section, number>>
-
-type CustomerHit = { id: string; name: string; phone: string | null }
 
 type ExpenseRow = { key: string; description: string; amount: string }
 
@@ -85,8 +67,8 @@ function errorMessage(e: unknown) {
     return 'الكمية في المخزون مش كفاية لخصم الرول'
   if (msg.includes('customer not found')) return 'العميل مش موجود في فرعك'
   if (msg.includes('not allowed'))
-    return 'الصفحة دي للسيلز بس. ادخل بحساب سيلز'
-  return 'مقدرتش أحفظ الفاتورة. اتأكد إن ملف 08 اتشغّل وإنك داخل بحساب سيلز'
+    return 'الصفحة دي للسيلز ومدير الفرع بس'
+  return 'مقدرتش أحفظ الفاتورة. اتأكد إنك داخل بحساب سيلز أو مدير فرع'
 }
 
 // ---------- الداتا ----------
@@ -134,99 +116,15 @@ async function fetchItems(): Promise<Item[]> {
   }))
 }
 
-async function searchCustomers(term: string): Promise<CustomerHit[]> {
-  const clean = cleanTerm(term)
-  if (!clean) return []
-
-  const { data, error } = await supabase
-    .from('customers')
-    .select('id, name, phone')
-    .or(`name.ilike."%${clean}%",phone.ilike."%${clean}%"`)
-    .order('name', { ascending: true })
-    .limit(8)
-  if (error) throw error
-
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    name: r.name as string,
-    phone: (r.phone as string | null) ?? null,
-  }))
-}
-
-// ---------- اختيار عميل موجود ----------
-
-function CustomerSearch({
-  onPick,
-}: {
-  onPick: (customer: CustomerHit) => void
-}) {
-  const [term, setTerm] = useState('')
-  const [debounced, setDebounced] = useState('')
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(term), 300)
-    return () => clearTimeout(t)
-  }, [term])
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['invoice-customer-search', debounced],
-    queryFn: () => searchCustomers(debounced),
-    placeholderData: keepPreviousData,
-  })
-
-  const searching = cleanTerm(debounced) !== ''
-
-  return (
-    <div className="flex flex-col" style={{ gap: 8 }}>
-      <div className="relative">
-        <input
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder="اسم العميل أو رقم التليفون"
-          className={inputClass}
-          style={{ ...pad(12, 16), paddingRight: 48 }}
-          autoComplete="off"
-        />
-        <MdSearch
-          size={22}
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-400"
-        />
-      </div>
-
-      {searching && isLoading && (
-        <p className="text-sm text-ink-400">جاري البحث...</p>
-      )}
-
-      {searching && data && data.length === 0 && (
-        <p className="text-sm text-ink-400">
-          مفيش عميل بالاسم ده. اختار &quot;عميل جديد&quot; فوق.
-        </p>
-      )}
-
-      {data?.map((c) => (
-        <button
-          key={c.id}
-          type="button"
-          onClick={() => onPick(c)}
-          className="flex items-center justify-between rounded-lg border border-ink-700 text-start transition hover:bg-ink-800"
-          style={{ ...pad(10, 14), gap: 12 }}
-        >
-          <span className="min-w-0 truncate font-semibold">{c.name}</span>
-          <span dir="ltr" className="shrink-0 text-sm text-ink-400">
-            {c.phone ?? ''}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 // ---------- الصفحة ----------
 
 export default function NewInvoice() {
   const { profile } = useAuth()
   const queryClient = useQueryClient()
   const branchId = profile?.branch_id ?? null
+
+  // نوع الفاتورة: حماية (بأجزاء وموظفين) أو عادية (بنود بتتكتب بإيد السيلز)
+  const [kind, setKind] = useState<InvoiceKind>('protection')
 
   // العميل
   const [mode, setMode] = useState<'new' | 'existing'>('new')
@@ -239,12 +137,9 @@ export default function NewInvoice() {
   const [plate, setPlate] = useState('')
 
   // مين عمل إيه: لكل جزء، الموظف اللي عمله ('' = مش متعمل)
-  const [assign, setAssign] = useState<Record<Section, string>>({
-    front: '',
-    back: '',
-    side_one: '',
-    side_two: '',
-  })
+  const [assign, setAssign] = useState<Record<Section, string>>(() =>
+    bySection('')
+  )
 
   // مصروفات الشغل
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
@@ -391,7 +286,7 @@ export default function NewInvoice() {
     setNewPhone('')
     setCar('')
     setPlate('')
-    setAssign({ front: '', back: '', side_one: '', side_two: '' })
+    setAssign(bySection(''))
     setExpenses([])
     setItemChoice(undefined)
     setItemQty('1')
@@ -445,6 +340,13 @@ export default function NewInvoice() {
     }
 
     mutation.mutate()
+  }
+
+  const typeSwitch = <InvoiceKindSwitch kind={kind} onChange={setKind} />
+
+  // ---------- فاتورة عادية (يدوي) ----------
+  if (kind === 'manual') {
+    return <ManualInvoice typeSwitch={typeSwitch} />
   }
 
   // ---------- بعد الحفظ ----------
@@ -509,13 +411,6 @@ export default function NewInvoice() {
   }
 
   // ---------- الفورم ----------
-  const toggleBtn = (active: boolean) =>
-    `flex-1 rounded-lg text-sm font-semibold transition ${
-      active
-        ? 'bg-brand-600 text-white'
-        : 'text-ink-400 hover:bg-ink-800 hover:text-ink-100'
-    }`
-
   return (
     <form
       onSubmit={submit}
@@ -529,88 +424,28 @@ export default function NewInvoice() {
         </p>
       </section>
 
+      {typeSwitch}
+
       {!branchId && (
         <p
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-          الصفحة دي للسيلز بس. ادخل بحساب سيلز عشان تعمل فاتورة.
+          الصفحة دي للسيلز ومدير الفرع بس. ادخل بحساب سيلز أو مدير فرع عشان تعمل فاتورة.
         </p>
       )}
 
       {/* 1) العميل */}
-      <section
-        className={`${cardClass} flex flex-col`}
-        style={{ ...pad(20), gap: 14 }}
-      >
-        <h2 className="font-bold">العميل</h2>
-
-        <div
-          className="flex rounded-xl border border-ink-700 bg-ink-950 sm:max-w-sm"
-          style={{ ...pad(4), gap: 4 }}
-        >
-          <button
-            type="button"
-            onClick={() => setMode('new')}
-            className={toggleBtn(mode === 'new')}
-            style={pad(8, 8)}
-          >
-            عميل جديد
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('existing')}
-            className={toggleBtn(mode === 'existing')}
-            style={pad(8, 8)}
-          >
-            عميل موجود
-          </button>
-        </div>
-
-        {mode === 'new' ? (
-          <div className="grid sm:grid-cols-2" style={{ gap: 12 }}>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="اسم العميل"
-              className={inputClass}
-              style={pad(12, 16)}
-            />
-            <input
-              type="tel"
-              dir="ltr"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="رقم التليفون (اختياري)"
-              className={`${inputClass} text-left`}
-              style={pad(12, 16)}
-            />
-          </div>
-        ) : picked ? (
-          <div
-            className="flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/10"
-            style={{ ...pad(12, 16), gap: 12 }}
-          >
-            <div className="min-w-0">
-              <p className="truncate font-bold">{picked.name}</p>
-              {picked.phone && (
-                <p dir="ltr" className="text-right text-sm text-ink-400">
-                  {picked.phone}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setPicked(null)}
-              className="shrink-0 text-sm font-semibold text-brand-400 hover:underline"
-            >
-              تغيير
-            </button>
-          </div>
-        ) : (
-          <CustomerSearch onPick={setPicked} />
-        )}
-      </section>
+      <CustomerPicker
+        mode={mode}
+        onModeChange={setMode}
+        picked={picked}
+        onPick={setPicked}
+        name={newName}
+        onNameChange={setNewName}
+        phone={newPhone}
+        onPhoneChange={setNewPhone}
+      />
 
       {/* 2) العربية */}
       <section
@@ -644,7 +479,7 @@ export default function NewInvoice() {
         <div>
           <h2 className="font-bold">مين عمل إيه</h2>
           <p className="text-sm text-ink-400" style={{ marginTop: 4 }}>
-            اختار الموظف اللي عمل كل جزء. الجزء اللي ماتعملش سيبه &quot;ماتعملش&quot;.
+            اختار الموظف اللي عمل كل جزء أو خدمة. اللي ماتعملش سيبه &quot;ماتعملش&quot;.
           </p>
         </div>
 

@@ -11,6 +11,7 @@ import {
 import { supabase } from '../../lib/supabase'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
+import { SECTION_LABEL } from '../../lib/sections'
 import {
   PERIODS,
   getRange,
@@ -32,18 +33,13 @@ type Invoice = {
   created_at: string
   customer_name: string
   customer_phone: string | null
+  kind: string
+  lines: { description: string; amount: number }[]
   work: { section: string; rate: number; employee: string }[]
   expenses: { description: string; amount: number }[]
 }
 
 const BRANCH_ORDER = ['الفرع الأول', 'الفرع الثاني', 'الفرع الثالث']
-
-const SECTION_LABEL: Record<string, string> = {
-  front: 'الوش',
-  back: 'الضهر',
-  side_one: 'جنب واحد',
-  side_two: 'جنب اتنين',
-}
 
 // Tailwind للـ layout والألوان بس، والـ padding/margin/gap كلها inline
 const cardClass = 'rounded-2xl border border-ink-700 bg-ink-900'
@@ -80,6 +76,15 @@ function parseInvoice(r: Record<string, unknown>): Invoice {
     amount: Number(e.amount),
   }))
 
+  // بنود الفاتورة العادية (اليدوي)، مرتبة زي ما اتكتبت
+  const lines = ((r.invoice_lines ?? []) as Record<string, unknown>[])
+    .slice()
+    .sort((a, b) => Number(a.position) - Number(b.position))
+    .map((l) => ({
+      description: String(l.description),
+      amount: Number(l.amount),
+    }))
+
   return {
     id: String(r.id),
     invoice_no: Number(r.invoice_no),
@@ -91,6 +96,8 @@ function parseInvoice(r: Record<string, unknown>): Invoice {
     created_at: String(r.created_at),
     customer_name: customer?.name ?? '—',
     customer_phone: customer?.phone ?? null,
+    kind: String(r.kind ?? 'protection'),
+    lines,
     work,
     expenses,
   }
@@ -100,8 +107,9 @@ async function fetchInvoices(from: Date, to: Date): Promise<Invoice[]> {
   const { data, error } = await supabase
     .from('invoices')
     .select(
-      'id, invoice_no, branch_id, car_model, plate_number, total_price, notes, created_at, ' +
+      'id, invoice_no, branch_id, car_model, plate_number, total_price, notes, created_at, kind, ' +
         'customers(name, phone), ' +
+        'invoice_lines(description, amount, position), ' +
         'invoice_work(section, rate, employees(full_name)), ' +
         'invoice_expenses(description, amount)'
     )
@@ -229,6 +237,14 @@ function InvoiceCard({
             >
               {branchName}
             </span>
+            {invoice.kind === 'manual' && (
+              <span
+                className="rounded-full bg-brand-600/15 text-xs font-semibold text-brand-400"
+                style={pad(2, 10)}
+              >
+                فاتورة عادية
+              </span>
+            )}
           </div>
           <p className="truncate font-semibold" style={{ marginTop: 6 }}>
             {invoice.customer_name}
@@ -257,29 +273,49 @@ function InvoiceCard({
           className="flex flex-col border-t border-ink-700 text-sm"
           style={{ ...pad(16, 20), gap: 16 }}
         >
-          <div className="flex flex-col" style={{ gap: 8 }}>
-            <p className="font-bold">مين عمل إيه</p>
-            {invoice.work.length === 0 && (
-              <p className="text-ink-400">مفيش شغل متسجل.</p>
-            )}
-            {invoice.work.map((w, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between"
-                style={{ gap: 12 }}
-              >
-                <span>
-                  {w.employee}{' '}
-                  <span className="text-ink-400">
-                    — {SECTION_LABEL[w.section] ?? w.section}
+          {invoice.kind === 'manual' && (
+            <div className="flex flex-col" style={{ gap: 8 }}>
+              <p className="font-bold">بنود الفاتورة</p>
+              {invoice.lines.map((l, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between"
+                  style={{ gap: 12 }}
+                >
+                  <span>{l.description}</span>
+                  <span dir="ltr" className="font-semibold">
+                    {money(l.amount)}
                   </span>
-                </span>
-                <span dir="ltr" className="font-semibold">
-                  {money(w.rate)}
-                </span>
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {invoice.kind !== 'manual' && (
+            <div className="flex flex-col" style={{ gap: 8 }}>
+              <p className="font-bold">مين عمل إيه</p>
+              {invoice.work.length === 0 && (
+                <p className="text-ink-400">مفيش شغل متسجل.</p>
+              )}
+              {invoice.work.map((w, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between"
+                  style={{ gap: 12 }}
+                >
+                  <span>
+                    {w.employee}{' '}
+                    <span className="text-ink-400">
+                      — {SECTION_LABEL[w.section] ?? w.section}
+                    </span>
+                  </span>
+                  <span dir="ltr" className="font-semibold">
+                    {money(w.rate)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-col" style={{ gap: 8 }}>
             <p className="font-bold">مصروفات الشغل</p>
@@ -306,7 +342,9 @@ function InvoiceCard({
           >
             <Line label="سعر الفاتورة" value={invoice.total_price} />
             <Line label="مصروفات الشغل" value={jobExpenses} />
-            <Line label="نسب الموظفين" value={workCost} />
+            {invoice.kind !== 'manual' && (
+              <Line label="نسب الموظفين" value={workCost} />
+            )}
             <Line
               label="صافي العملية"
               value={net}

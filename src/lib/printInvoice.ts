@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { SECTION_LABEL, serviceName } from './sections'
 
 export type PrintableInvoice = {
   invoiceNo: number
@@ -14,13 +15,8 @@ export type PrintableInvoice = {
   expenses: { description: string; amount: number }[]
   itemName: string | null
   itemQty: number
-}
-
-export const SECTION_LABEL: Record<string, string> = {
-  front: 'الوش',
-  back: 'الضهر',
-  side_one: 'جنب واحد',
-  side_two: 'جنب اتنين',
+  // فاتورة عادية (يدوي): البنود اللي اتكتبت بإيد السيلز
+  lines?: { description: string; amount: number }[]
 }
 
 const esc = (s: string) =>
@@ -123,14 +119,28 @@ export function printCustomerInvoice(inv: PrintableInvoice) {
     </div>
 
     <h3>الخدمات</h3>
-    <table>
+    ${
+      inv.lines && inv.lines.length > 0
+        ? `<table>
+      <thead><tr><th>الخدمة</th><th>المبلغ</th></tr></thead>
+      <tbody>
+        ${inv.lines
+          .map(
+            (l) =>
+              `<tr><td>${esc(l.description)}</td><td dir="ltr">${num(l.amount)}</td></tr>`
+          )
+          .join('')}
+      </tbody>
+    </table>`
+        : `<table>
       <thead><tr><th>الخدمة</th></tr></thead>
       <tbody>
         ${sections
-          .map((s) => `<tr><td>حماية ${esc(SECTION_LABEL[s] ?? s)}</td></tr>`)
+          .map((s) => `<tr><td>${esc(serviceName(s))}</td></tr>`)
           .join('')}
       </tbody>
-    </table>
+    </table>`
+    }
 
     ${inv.notes ? `<h3>ملاحظات</h3><p>${esc(inv.notes)}</p>` : ''}
 
@@ -164,7 +174,26 @@ export function printInternalInvoice(inv: PrintableInvoice) {
       </div>
     </div>
 
-    <h3>مين عمل إيه</h3>
+    ${
+      inv.lines && inv.lines.length > 0
+        ? `<h3>بنود الفاتورة (فاتورة عادية)</h3>
+    <table>
+      <thead><tr><th>البند</th><th>المبلغ</th></tr></thead>
+      <tbody>
+        ${inv.lines
+          .map(
+            (l) =>
+              `<tr><td>${esc(l.description)}</td><td dir="ltr">${num(l.amount)}</td></tr>`
+          )
+          .join('')}
+      </tbody>
+    </table>`
+        : ''
+    }
+
+    ${
+      inv.work.length > 0
+        ? `<h3>مين عمل إيه</h3>
     <table>
       <thead><tr><th>الموظف</th><th>الجزء</th><th>النسبة</th></tr></thead>
       <tbody>
@@ -177,7 +206,9 @@ export function printInternalInvoice(inv: PrintableInvoice) {
           )
           .join('')}
       </tbody>
-    </table>
+    </table>`
+        : ''
+    }
 
     <h3>مصروفات الشغل</h3>
     ${
@@ -206,7 +237,11 @@ export function printInternalInvoice(inv: PrintableInvoice) {
     <div class="lines">
       <div><span>سعر الفاتورة</span><span dir="ltr">${num(inv.price)}</span></div>
       <div><span>مصروفات الشغل</span><span dir="ltr">${num(expensesTotal)}</span></div>
-      <div><span>نسب الموظفين</span><span dir="ltr">${num(workCost)}</span></div>
+      ${
+        inv.work.length > 0
+          ? `<div><span>نسب الموظفين</span><span dir="ltr">${num(workCost)}</span></div>`
+          : ''
+      }
     </div>
 
     <div class="total">

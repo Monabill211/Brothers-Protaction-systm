@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
+import { SECTION_LABEL, SECTION_ORDER } from '../../lib/sections'
 
 type Customer = {
   id: string
@@ -24,15 +25,8 @@ type CustomerInvoice = {
   notes: string | null
   created_at: string
   sections: string[]
+  lines: string[]
 }
-
-const SECTION_LABEL: Record<string, string> = {
-  front: 'الوش',
-  back: 'الضهر',
-  side_one: 'جنب واحد',
-  side_two: 'جنب اتنين',
-}
-const SECTION_ORDER = ['front', 'back', 'side_one', 'side_two']
 
 // Tailwind للـ layout والألوان بس، والـ padding/margin/gap كلها inline
 const cardClass = 'rounded-2xl border border-ink-700 bg-ink-900'
@@ -90,7 +84,7 @@ async function fetchCustomerInvoices(
   const { data, error } = await supabase
     .from('invoices')
     .select(
-      'id, invoice_no, car_model, plate_number, total_price, notes, created_at, invoice_work(section)'
+      'id, invoice_no, car_model, plate_number, total_price, notes, created_at, invoice_work(section), invoice_lines(description, position)'
     )
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false })
@@ -101,6 +95,10 @@ async function fetchCustomerInvoices(
     const sections = [...new Set(work.map((w) => w.section))].sort(
       (a, b) => SECTION_ORDER.indexOf(a) - SECTION_ORDER.indexOf(b)
     )
+    const lines = ((r.invoice_lines ?? []) as Record<string, unknown>[])
+      .slice()
+      .sort((a, b) => Number(a.position) - Number(b.position))
+      .map((l) => String(l.description))
     return {
       id: String(r.id),
       invoice_no: Number(r.invoice_no),
@@ -110,6 +108,7 @@ async function fetchCustomerInvoices(
       notes: (r.notes as string | null) ?? null,
       created_at: String(r.created_at),
       sections,
+      lines,
     }
   })
 }
@@ -223,6 +222,24 @@ function CustomerCard({ customer }: { customer: Customer }) {
                             .join(' • ')}
                         </span>
                       </p>
+                    )}
+
+                    {inv.lines.length > 0 && (
+                      <div
+                        className="flex flex-wrap items-center"
+                        style={{ gap: 6 }}
+                      >
+                        <span className="text-ink-400">الخدمات:</span>
+                        {inv.lines.map((l, i) => (
+                          <span
+                            key={i}
+                            className="rounded-full bg-brand-600/15 text-xs font-semibold text-brand-400"
+                            style={pad(2, 10)}
+                          >
+                            {l}
+                          </span>
+                        ))}
+                      </div>
                     )}
 
                     {inv.sections.length > 0 && (
