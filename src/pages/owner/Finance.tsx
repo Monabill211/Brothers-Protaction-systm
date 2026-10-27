@@ -335,7 +335,6 @@ export default function Finance() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-          مقدرتش أحمّل الملخصات. اتأكد إنك شغّلت ملف 05_finance_summary.sql وإنك
           داخل بحساب المناجر.
         </p>
       )}

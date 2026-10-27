@@ -8,6 +8,7 @@ import {
   MdVisibilityOff,
 } from 'react-icons/md'
 import { supabase } from '../../lib/supabase'
+import { centerX, pad } from '../../lib/spacing'
 import { useAuth } from '../../auth/auth-context'
 
 type StaffRole = 'branch_manager' | 'sales'
@@ -28,39 +29,42 @@ const STAFF_ROLES: { role: StaffRole; label: string }[] = [
   { role: 'sales', label: 'السيلز' },
 ]
 
-const BRANCH_ORDER = ['الفرع الأول', 'الفرع الثاني', 'الفرع الثالث']
-
+// Tailwind للـ layout والألوان بس، والـ padding/margin/gap كلها inline
 const inputClass =
-  'w-full rounded-lg border border-ink-700 bg-ink-950 px-4 py-3 text-base text-ink-100 ' +
+  'w-full rounded-lg border border-ink-700 bg-ink-950 text-base text-ink-100 ' +
   'placeholder:text-ink-400 outline-none transition ' +
   'focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30'
 
 const iconBtnClass =
-  'rounded-md p-1.5 text-ink-400 transition hover:bg-ink-800 hover:text-ink-100'
+  'rounded-md text-ink-400 transition hover:bg-ink-800 hover:text-ink-100'
 
 const primaryBtnClass =
-  'rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white transition ' +
+  'rounded-lg bg-brand-600 text-sm font-bold text-white transition ' +
   'hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60'
 
 const ghostBtnClass =
-  'rounded-lg border border-ink-700 px-4 py-2.5 text-sm font-semibold text-ink-100 ' +
+  'rounded-lg border border-ink-700 text-sm font-semibold text-ink-100 ' +
   'transition hover:bg-ink-800'
+
+const col = (gap: number) => ({ gap })
 
 // ---------- helpers ----------
 
 async function callManageUser(body: Record<string, unknown>) {
-const { data, error } = await supabase.functions.invoke('rapid-responder', {    body,
+  const { data, error } = await supabase.functions.invoke('rapid-responder', {
+    body,
   })
 
   if (error) {
-    let message = 'حصل خطأ، حاول تاني'
+    let message = error.message || 'حصل خطأ، حاول تاني'
     const context = (error as { context?: Response }).context
     if (context) {
       try {
         const parsed = await context.json()
         if (parsed?.error) message = parsed.error
+        else if (parsed?.message) message = `${context.status}: ${parsed.message}`
       } catch {
-        // نسيب الرسالة الافتراضية
+        message = `خطأ ${context.status} من السيرفر`
       }
     }
     throw new Error(message)
@@ -78,7 +82,10 @@ function generatePassword(length = 10) {
 
 async function fetchAccounts() {
   const [branchesRes, profilesRes] = await Promise.all([
-    supabase.from('branches').select('id, name'),
+    supabase
+      .from('branches')
+      .select('id, name')
+      .order('position', { ascending: true }),
     supabase
       .from('profiles')
       .select(
@@ -90,11 +97,7 @@ async function fetchAccounts() {
   if (branchesRes.error) throw branchesRes.error
   if (profilesRes.error) throw profilesRes.error
 
-  const branches = ([...(branchesRes.data ?? [])] as Branch[]).sort((a, b) => {
-    const ia = BRANCH_ORDER.indexOf(a.name)
-    const ib = BRANCH_ORDER.indexOf(b.name)
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-  })
+  const branches = (branchesRes.data ?? []) as Branch[]
 
   const accounts: Account[] = (profilesRes.data ?? []).map((row) => {
     const raw = row.user_credentials as unknown
@@ -138,14 +141,19 @@ function PasswordInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`${inputClass} pl-20 text-left`}
+        className={`${inputClass} text-left`}
+        style={{ ...pad(12, 16), paddingLeft: 80 }}
       />
-      <div className="absolute left-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+      <div
+        className="absolute left-2 top-1/2 flex -translate-y-1/2 items-center"
+        style={col(2)}
+      >
         <button
           type="button"
           title="توليد باسورد"
           aria-label="توليد باسورد"
           className={iconBtnClass}
+          style={pad(6)}
           onClick={() => {
             onChange(generatePassword())
             setShow(true)
@@ -157,6 +165,7 @@ function PasswordInput({
           type="button"
           aria-label={show ? 'إخفاء الباسورد' : 'إظهار الباسورد'}
           className={iconBtnClass}
+          style={pad(6)}
           onClick={() => setShow((v) => !v)}
         >
           {show ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
@@ -166,23 +175,37 @@ function PasswordInput({
   )
 }
 
-// ---------- change password ----------
+// ---------- edit account (name / email / password) ----------
 
-function ChangePasswordForm({
+function EditAccountForm({
   userId,
+  initialName,
+  initialEmail,
+  isSelf = false,
   onDone,
 }: {
   userId: string
+  initialName: string
+  initialEmail: string
+  isSelf?: boolean
   onDone?: () => void
 }) {
   const queryClient = useQueryClient()
+  const [name, setName] = useState(initialName)
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
 
   const mutation = useMutation({
-    mutationFn: () =>
-      callManageUser({ action: 'set-password', user_id: userId, password }),
-    onSuccess: () => {
-      toast.success('تم تغيير الباسورد')
+    mutationFn: (changes: Record<string, string>) =>
+      callManageUser({ action: 'update-account', user_id: userId, ...changes }),
+    onSuccess: (_data, changes) => {
+      if (isSelf && changes.full_name) {
+        toast.success('تم الحفظ. الاسم الجديد هيظهر بعد تحديث الصفحة')
+      } else if (isSelf && changes.email) {
+        toast.success('تم الحفظ. استخدم الإيميل الجديد في الدخول الجاي')
+      } else {
+        toast.success('تم حفظ التعديلات')
+      }
       setPassword('')
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       onDone?.()
@@ -192,26 +215,91 @@ function ChangePasswordForm({
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (password.length < 6) {
-      toast.error('الباسورد لازم يكون 6 حروف على الأقل')
+    const changes: Record<string, string> = {}
+
+    if (name.trim() !== initialName) {
+      if (!name.trim()) {
+        toast.error('اكتب الاسم')
+        return
+      }
+      changes.full_name = name.trim()
+    }
+
+    if (email.trim().toLowerCase() !== initialEmail.toLowerCase()) {
+      if (!email.trim()) {
+        toast.error('اكتب الإيميل')
+        return
+      }
+      changes.email = email.trim()
+    }
+
+    if (password) {
+      if (password.length < 6) {
+        toast.error('الباسورد لازم يكون 6 حروف على الأقل')
+        return
+      }
+      changes.password = password
+    }
+
+    if (Object.keys(changes).length === 0) {
+      toast.error('مفيش حاجة اتغيّرت')
       return
     }
-    mutation.mutate()
+    mutation.mutate(changes)
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
-      <PasswordInput
-        value={password}
-        onChange={setPassword}
-        placeholder="الباسورد الجديد"
-      />
-      <div className="flex gap-2">
-        <button type="submit" disabled={mutation.isPending} className={primaryBtnClass}>
-          {mutation.isPending ? 'جاري الحفظ...' : 'حفظ الباسورد'}
+    <form onSubmit={submit} className="flex flex-col" style={col(12)}>
+      <div className="flex flex-col" style={col(6)}>
+        <label className="text-sm font-semibold">الاسم</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="الاسم"
+          className={inputClass}
+          style={pad(12, 16)}
+        />
+      </div>
+
+      <div className="flex flex-col" style={col(6)}>
+        <label className="text-sm font-semibold">الإيميل</label>
+        <input
+          type="email"
+          dir="ltr"
+          autoComplete="off"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="الإيميل"
+          className={`${inputClass} text-left`}
+          style={pad(12, 16)}
+        />
+      </div>
+
+      <div className="flex flex-col" style={col(6)}>
+        <label className="text-sm font-semibold">الباسورد الجديد</label>
+        <PasswordInput
+          value={password}
+          onChange={setPassword}
+          placeholder="سيبه فاضي لو مش عايز تغيّره"
+        />
+      </div>
+
+      <div className="flex" style={col(8)}>
+        <button
+          type="submit"
+          disabled={mutation.isPending}
+          className={primaryBtnClass}
+          style={pad(10, 16)}
+        >
+          {mutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
         </button>
         {onDone && (
-          <button type="button" onClick={onDone} className={ghostBtnClass}>
+          <button
+            type="button"
+            onClick={onDone}
+            className={ghostBtnClass}
+            style={pad(10, 16)}
+          >
             إلغاء
           </button>
         )}
@@ -265,12 +353,13 @@ function CreateAccountForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="flex flex-col" style={col(12)}>
       <input
         value={fullName}
         onChange={(e) => setFullName(e.target.value)}
         placeholder="الاسم"
         className={inputClass}
+        style={pad(12, 16)}
       />
       <input
         type="email"
@@ -280,9 +369,15 @@ function CreateAccountForm({
         onChange={(e) => setEmail(e.target.value)}
         placeholder="الإيميل (مش لازم يكون حقيقي)"
         className={`${inputClass} text-left`}
+        style={pad(12, 16)}
       />
       <PasswordInput value={password} onChange={setPassword} />
-      <button type="submit" disabled={mutation.isPending} className={`${primaryBtnClass} w-full`}>
+      <button
+        type="submit"
+        disabled={mutation.isPending}
+        className={`${primaryBtnClass} w-full`}
+        style={pad(10, 16)}
+      >
         {mutation.isPending ? 'جاري الإنشاء...' : 'إنشاء الحساب'}
       </button>
     </form>
@@ -316,36 +411,43 @@ function AccountCard({
   }
 
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <div
+      className="rounded-2xl border border-ink-700 bg-ink-900"
+      style={pad(20)}
+    >
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 16, gap: 8 }}
+      >
         <h3 className="font-bold">{label}</h3>
         <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          className={`rounded-full text-xs font-semibold ${
             account
               ? 'bg-emerald-500/15 text-emerald-400'
               : 'bg-ink-800 text-ink-400'
           }`}
+          style={pad(4, 12)}
         >
           {account ? 'مفعّل' : 'لسه مفيش حساب'}
         </span>
       </div>
 
       {account ? (
-        <div className="space-y-4">
-          <dl className="space-y-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col" style={col(16)}>
+          <dl className="flex flex-col text-sm" style={col(12)}>
+            <div className="flex items-center justify-between" style={col(12)}>
               <dt className="text-ink-400">الاسم</dt>
               <dd className="truncate font-semibold">{account.full_name}</dd>
             </div>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between" style={col(12)}>
               <dt className="text-ink-400">الإيميل</dt>
               <dd dir="ltr" className="truncate font-semibold">
                 {account.email ?? '—'}
               </dd>
             </div>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between" style={col(12)}>
               <dt className="text-ink-400">الباسورد</dt>
-              <dd className="flex items-center gap-1">
+              <dd className="flex items-center" style={col(4)}>
                 <span dir="ltr" className="font-mono font-semibold">
                   {showPassword ? account.password ?? '—' : '••••••••'}
                 </span>
@@ -353,6 +455,7 @@ function AccountCard({
                   type="button"
                   aria-label={showPassword ? 'إخفاء الباسورد' : 'إظهار الباسورد'}
                   className={iconBtnClass}
+                  style={pad(6)}
                   onClick={() => setShowPassword((v) => !v)}
                 >
                   {showPassword ? (
@@ -365,6 +468,7 @@ function AccountCard({
                   type="button"
                   aria-label="نسخ الباسورد"
                   className={iconBtnClass}
+                  style={pad(6)}
                   onClick={copyPassword}
                 >
                   <MdContentCopy size={18} />
@@ -374,8 +478,10 @@ function AccountCard({
           </dl>
 
           {changing ? (
-            <ChangePasswordForm
+            <EditAccountForm
               userId={account.id}
+              initialName={account.full_name}
+              initialEmail={account.email ?? ''}
               onDone={() => setChanging(false)}
             />
           ) : (
@@ -383,8 +489,9 @@ function AccountCard({
               type="button"
               onClick={() => setChanging(true)}
               className={ghostBtnClass}
+              style={pad(10, 16)}
             >
-              تغيير الباسورد
+              تعديل (الاسم / الإيميل / الباسورد)
             </button>
           )}
         </div>
@@ -398,27 +505,39 @@ function AccountCard({
 // ---------- page ----------
 
 export default function Settings() {
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   const { data, isLoading, error } = useQuery({
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
   })
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="flex max-w-5xl flex-col" style={{ ...centerX, gap: 32 }}>
       <section>
         <h1 className="text-2xl font-bold sm:text-3xl">الإعدادات</h1>
-        <p className="mt-2 text-ink-400">
-          حساب مدير الفرع وحساب السيلز لكل فرع، وتغيير الباسوردات.
+        <p className="text-ink-400" style={{ marginTop: 8 }}>
+          حساب مدير الفرع وحساب السيلز لكل فرع، وتعديل الاسم والإيميل والباسورد.
         </p>
       </section>
 
       {profile && (
-        <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
-          <h2 className="mb-1 font-bold">باسورد المناجر (حسابك)</h2>
-          <p className="mb-4 text-sm text-ink-400">{profile.full_name}</p>
+        <section
+          className="rounded-2xl border border-ink-700 bg-ink-900"
+          style={pad(20)}
+        >
+          <h2 className="font-bold" style={{ marginBottom: 4 }}>
+            حسابك (الاونر)
+          </h2>
+          <p className="text-sm text-ink-400" style={{ marginBottom: 16 }}>
+            غيّر الاسم أو الإيميل أو الباسورد بتاعك.
+          </p>
           <div className="max-w-md">
-            <ChangePasswordForm userId={profile.id} />
+            <EditAccountForm
+              userId={profile.id}
+              initialName={profile.full_name}
+              initialEmail={session?.user.email ?? ''}
+              isSelf
+            />
           </div>
         </section>
       )}
@@ -426,16 +545,18 @@ export default function Settings() {
       {isLoading && <p className="text-ink-400">جاري التحميل...</p>}
 
       {error && (
-        <p className="rounded-lg border border-brand-700 bg-brand-900/40 p-4 text-sm text-brand-100">
-          مقدرتش أحمّل الحسابات. اتأكد إنك شغّلت ملفات الـ SQL وإنك داخل بحساب
-          المناجر.
+        <p
+          className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
+          style={pad(16)}
+        >
+في مشكلة
         </p>
       )}
 
       {data?.branches.map((branch) => (
-        <section key={branch.id} className="space-y-4">
+        <section key={branch.id} className="flex flex-col" style={col(16)}>
           <h2 className="text-xl font-bold">{branch.name}</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid md:grid-cols-2" style={col(16)}>
             {STAFF_ROLES.map(({ role, label }) => (
               <AccountCard
                 key={role}
