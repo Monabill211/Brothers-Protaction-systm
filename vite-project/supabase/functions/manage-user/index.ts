@@ -149,7 +149,7 @@ async function setPassword(
     .maybeSingle()
   if (!target) return json({ error: 'الحساب مش موجود' }, 404)
 
-  // المناجر يغيّر باسورد مدير الفرع والسيلز وباسورده هو بس
+  // الاونر يغيّر باسورد مدير الفرع والسيلز وباسورده هو بس
   const allowed = STAFF_ROLES.includes(target.role) || target.id === callerId
   if (!allowed) return json({ error: 'مينفعش تغيّر باسورد الحساب ده' }, 403)
 

@@ -173,7 +173,7 @@ async function updateAccount(
     .maybeSingle()
   if (!target) return json({ error: 'الحساب مش موجود' }, 404)
 
-  // المناجر يعدّل مدير الفرع والسيلز وحسابه هو بس
+  // الاونر يعدّل مدير الفرع والسيلز وحسابه هو بس
   const allowed = STAFF_ROLES.includes(target.role) || target.id === callerId
   if (!allowed) return json({ error: 'مينفعش تعدّل الحساب ده' }, 403)
 

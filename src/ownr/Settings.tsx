@@ -415,7 +415,7 @@ export default function Settings() {
 
       {profile && (
         <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
-          <h2 className="mb-1 font-bold">باسورد المناجر (حسابك)</h2>
+          <h2 className="mb-1 font-bold">باسورد الاونر (حسابك)</h2>
           <p className="mb-4 text-sm text-ink-400">{profile.full_name}</p>
           <div className="max-w-md">
             <ChangePasswordForm userId={profile.id} />
@@ -428,7 +428,7 @@ export default function Settings() {
       {error && (
         <p className="rounded-lg border border-brand-700 bg-brand-900/40 p-4 text-sm text-brand-100">
           مقدرتش أحمّل الحسابات. اتأكد إنك شغّلت ملفات الـ SQL وإنك داخل بحساب
-          المناجر.
+          الاونر.
         </p>
       )}
 

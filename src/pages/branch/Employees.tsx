@@ -456,7 +456,7 @@ export default function Employees() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-          مقدرتش أحمّل البيانات. اتأكد إنك داخل بحساب مدير الفرع (مش المناجر) وإن
+          مقدرتش أحمّل البيانات. اتأكد إنك داخل بحساب مدير الفرع (مش الاونر) وإن
           ملفات الـ SQL اتشغلت.
         </p>
       )}

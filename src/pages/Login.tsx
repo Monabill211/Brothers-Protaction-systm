@@ -54,7 +54,7 @@ export default function Login() {
 
     if (profileError || !home) {
       await supabase.auth.signOut()
-      toast.error('الحساب ده مش متسجل في السيستم، كلّم المناجر')
+      toast.error('الحساب ده مش متسجل في السيستم، كلّم الاونر')
       return
     }
 

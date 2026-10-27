@@ -21,7 +21,7 @@ export type NavItem = {
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
-  owner: 'المناجر',
+  owner: 'الاونر',
   branch_manager: 'مدير الفرع',
   sales: 'السيلز',
 }

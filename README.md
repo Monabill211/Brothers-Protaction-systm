@@ -1,7 +1,7 @@
 # Brothers Protection — نظام الإدارة
 
 React + Vite + TypeScript + Tailwind v4 + Supabase.
-ثلاث أدوار: **المناجر (owner)** و**مدير الفرع (branch)** و**السيلز (branch-sells)**، وثلاث فروع كل فرع معزول عن التاني.
+ثلاث أدوار: **الاونر (owner)** و**مدير الفرع (branch)** و**السيلز (branch-sells)**، وثلاث فروع كل فرع معزول عن التاني.
 
 ## تشغيل محلي
 
@@ -23,11 +23,11 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ## Supabase
 
 1. في **SQL Editor** شغّل الملفات اللي في `supabase/sql/` بالترتيب (01 → 13)، واحد واحد.
-2. اعمل يوزر المناجر من Authentication ← Users ← Add user (فعّل Auto Confirm User)، وبعدين شغّل:
+2. اعمل يوزر الاونر من Authentication ← Users ← Add user (فعّل Auto Confirm User)، وبعدين شغّل:
 
 ```sql
 insert into public.profiles (id, full_name, role)
-values ('UUID-بتاع-اليوزر', 'المناجر', 'owner');
+values ('UUID-بتاع-اليوزر', 'الاونر', 'owner');
 
 insert into public.user_credentials (user_id, email, password_plain)
 values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
@@ -38,7 +38,7 @@ values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
    الـ Dashboard بيدّيها اسم تلقائي (مثلاً `rapid-responder`)، فلو اسمها مختلف عن اللي في
    `src/pages/owner/Settings.tsx` (دالة `callManageUser`) غيّر الاسم هناك.
    أي تعديل في كود الـ Function لازم ترفعه تاني (Edge Functions ← الـ Function ← Code ← Deploy updates).
-4. من صفحة **الإعدادات** عند المناجر اعمل حساب مدير الفرع وحساب السيلز لكل فرع.
+4. من صفحة **الإعدادات** عند الاونر اعمل حساب مدير الفرع وحساب السيلز لكل فرع.
 
 ## النشر على Vercel
 
@@ -51,9 +51,9 @@ values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
 
 | الدور | المسار | الصفحة |
 |---|---|---|
-| المناجر | `/owner/finance` | الملخصات المالية (يومي/أسبوعي/شهري/سنوي لكل فرع) |
-| المناجر | `/owner/operations` | العمليات (كل الفواتير: مين عمل إيه والصافي) |
-| المناجر | `/owner/settings` | حسابات مدير الفرع والسيلز لكل فرع، وتعديل الاسم والإيميل والباسورد (حسابهم وحساب المناجر نفسه) |
+| الاونر | `/owner/finance` | الملخصات المالية (يومي/أسبوعي/شهري/سنوي لكل فرع) |
+| الاونر | `/owner/operations` | العمليات (كل الفواتير: مين عمل إيه والصافي) |
+| الاونر | `/owner/settings` | حسابات مدير الفرع والسيلز لكل فرع، وتعديل الاسم والإيميل والباسورد (حسابهم وحساب الاونر نفسه) |
 | مدير الفرع | `/branch/employees` | الموظفين واليومية، ونسب الوش والضهر والجنب ونص عزل وعزل كامل وفك وتركيب |
 | مدير الفرع | `/branch/payroll` | القبض الأسبوعي (اعتماد + طباعة PDF) |
 | مدير الفرع | `/branch/expenses` | المصروفات مع السبب |
@@ -61,7 +61,7 @@ values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
 | مدير الفرع | `/branch/new-invoice` | فاتورة جديدة (نفس صفحة السيلز: حماية أو عادية يدوي) |
 | السيلز | `/branch-sells/new-invoice` | فاتورة جديدة: **فاتورة حماية** (عميل + شغل + مصروفات + خصم رول) أو **فاتورة عادية يدوي** (بنود وأسعار بتتكتب بالإيد) |
 | السيلز | `/branch-sells/attendance` | حضور وانصراف الموظفين |
-| السيلز | `/branch-sells/expenses` | تسجيل مصروفات النهارده (بيشوفها مدير الفرع والمناجر) |
+| السيلز | `/branch-sells/expenses` | تسجيل مصروفات النهارده (بيشوفها مدير الفرع والاونر) |
 | السيلز | `/branch-sells/customers` | البحث عن عميل وفواتيره القديمة |
 
 ## ملاحظات للتطوير
