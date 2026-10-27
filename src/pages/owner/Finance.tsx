@@ -31,11 +31,10 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: 'year', label: 'سنوي' },
 ]
 
-const BRANCH_ORDER = ['الفرع الأول', 'الفرع الثاني', 'الفرع الثالث']
-
 type Row = {
   branch_id: string
   branch_name: string
+  branch_position: number
   invoices_count: number
   revenue: number
   job_expenses: number
@@ -108,17 +107,14 @@ async function fetchSummary(from: string, to: string): Promise<Row[]> {
     .map((r) => ({
       branch_id: String(r.branch_id),
       branch_name: String(r.branch_name),
+      branch_position: Number(r.branch_position),
       invoices_count: Number(r.invoices_count),
       revenue: Number(r.revenue),
       job_expenses: Number(r.job_expenses),
       general_expenses: Number(r.general_expenses),
       payroll: Number(r.payroll),
     }))
-    .sort((a, b) => {
-      const ia = BRANCH_ORDER.indexOf(a.branch_name)
-      const ib = BRANCH_ORDER.indexOf(b.branch_name)
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-    })
+    .sort((a, b) => a.branch_position - b.branch_position)
 }
 
 // ---------- مكونات صغيرة ----------

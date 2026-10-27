@@ -29,8 +29,6 @@ const STAFF_ROLES: { role: StaffRole; label: string }[] = [
   { role: 'sales', label: 'السيلز' },
 ]
 
-const BRANCH_ORDER = ['الفرع الأول', 'الفرع الثاني', 'الفرع الثالث']
-
 // Tailwind للـ layout والألوان بس، والـ padding/margin/gap كلها inline
 const inputClass =
   'w-full rounded-lg border border-ink-700 bg-ink-950 text-base text-ink-100 ' +
@@ -84,7 +82,10 @@ function generatePassword(length = 10) {
 
 async function fetchAccounts() {
   const [branchesRes, profilesRes] = await Promise.all([
-    supabase.from('branches').select('id, name'),
+    supabase
+      .from('branches')
+      .select('id, name')
+      .order('position', { ascending: true }),
     supabase
       .from('profiles')
       .select(
@@ -96,11 +97,7 @@ async function fetchAccounts() {
   if (branchesRes.error) throw branchesRes.error
   if (profilesRes.error) throw profilesRes.error
 
-  const branches = ([...(branchesRes.data ?? [])] as Branch[]).sort((a, b) => {
-    const ia = BRANCH_ORDER.indexOf(a.name)
-    const ib = BRANCH_ORDER.indexOf(b.name)
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-  })
+  const branches = (branchesRes.data ?? []) as Branch[]
 
   const accounts: Account[] = (profilesRes.data ?? []).map((row) => {
     const raw = row.user_credentials as unknown
@@ -178,23 +175,37 @@ function PasswordInput({
   )
 }
 
-// ---------- change password ----------
+// ---------- edit account (name / email / password) ----------
 
-function ChangePasswordForm({
+function EditAccountForm({
   userId,
+  initialName,
+  initialEmail,
+  isSelf = false,
   onDone,
 }: {
   userId: string
+  initialName: string
+  initialEmail: string
+  isSelf?: boolean
   onDone?: () => void
 }) {
   const queryClient = useQueryClient()
+  const [name, setName] = useState(initialName)
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
 
   const mutation = useMutation({
-    mutationFn: () =>
-      callManageUser({ action: 'set-password', user_id: userId, password }),
-    onSuccess: () => {
-      toast.success('تم تغيير الباسورد')
+    mutationFn: (changes: Record<string, string>) =>
+      callManageUser({ action: 'update-account', user_id: userId, ...changes }),
+    onSuccess: (_data, changes) => {
+      if (isSelf && changes.full_name) {
+        toast.success('تم الحفظ. الاسم الجديد هيظهر بعد تحديث الصفحة')
+      } else if (isSelf && changes.email) {
+        toast.success('تم الحفظ. استخدم الإيميل الجديد في الدخول الجاي')
+      } else {
+        toast.success('تم حفظ التعديلات')
+      }
       setPassword('')
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       onDone?.()
@@ -204,20 +215,75 @@ function ChangePasswordForm({
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (password.length < 6) {
-      toast.error('الباسورد لازم يكون 6 حروف على الأقل')
+    const changes: Record<string, string> = {}
+
+    if (name.trim() !== initialName) {
+      if (!name.trim()) {
+        toast.error('اكتب الاسم')
+        return
+      }
+      changes.full_name = name.trim()
+    }
+
+    if (email.trim().toLowerCase() !== initialEmail.toLowerCase()) {
+      if (!email.trim()) {
+        toast.error('اكتب الإيميل')
+        return
+      }
+      changes.email = email.trim()
+    }
+
+    if (password) {
+      if (password.length < 6) {
+        toast.error('الباسورد لازم يكون 6 حروف على الأقل')
+        return
+      }
+      changes.password = password
+    }
+
+    if (Object.keys(changes).length === 0) {
+      toast.error('مفيش حاجة اتغيّرت')
       return
     }
-    mutation.mutate()
+    mutation.mutate(changes)
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col" style={col(12)}>
-      <PasswordInput
-        value={password}
-        onChange={setPassword}
-        placeholder="الباسورد الجديد"
-      />
+      <div className="flex flex-col" style={col(6)}>
+        <label className="text-sm font-semibold">الاسم</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="الاسم"
+          className={inputClass}
+          style={pad(12, 16)}
+        />
+      </div>
+
+      <div className="flex flex-col" style={col(6)}>
+        <label className="text-sm font-semibold">الإيميل</label>
+        <input
+          type="email"
+          dir="ltr"
+          autoComplete="off"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="الإيميل"
+          className={`${inputClass} text-left`}
+          style={pad(12, 16)}
+        />
+      </div>
+
+      <div className="flex flex-col" style={col(6)}>
+        <label className="text-sm font-semibold">الباسورد الجديد</label>
+        <PasswordInput
+          value={password}
+          onChange={setPassword}
+          placeholder="سيبه فاضي لو مش عايز تغيّره"
+        />
+      </div>
+
       <div className="flex" style={col(8)}>
         <button
           type="submit"
@@ -225,7 +291,7 @@ function ChangePasswordForm({
           className={primaryBtnClass}
           style={pad(10, 16)}
         >
-          {mutation.isPending ? 'جاري الحفظ...' : 'حفظ الباسورد'}
+          {mutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
         </button>
         {onDone && (
           <button
@@ -412,8 +478,10 @@ function AccountCard({
           </dl>
 
           {changing ? (
-            <ChangePasswordForm
+            <EditAccountForm
               userId={account.id}
+              initialName={account.full_name}
+              initialEmail={account.email ?? ''}
               onDone={() => setChanging(false)}
             />
           ) : (
@@ -423,7 +491,7 @@ function AccountCard({
               className={ghostBtnClass}
               style={pad(10, 16)}
             >
-              تغيير الباسورد
+              تعديل (الاسم / الإيميل / الباسورد)
             </button>
           )}
         </div>
@@ -437,7 +505,7 @@ function AccountCard({
 // ---------- page ----------
 
 export default function Settings() {
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   const { data, isLoading, error } = useQuery({
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
@@ -448,7 +516,7 @@ export default function Settings() {
       <section>
         <h1 className="text-2xl font-bold sm:text-3xl">الإعدادات</h1>
         <p className="text-ink-400" style={{ marginTop: 8 }}>
-          حساب مدير الفرع وحساب السيلز لكل فرع، وتغيير الباسوردات.
+          حساب مدير الفرع وحساب السيلز لكل فرع، وتعديل الاسم والإيميل والباسورد.
         </p>
       </section>
 
@@ -458,13 +526,18 @@ export default function Settings() {
           style={pad(20)}
         >
           <h2 className="font-bold" style={{ marginBottom: 4 }}>
-            باسورد المناجر (حسابك)
+            حسابك (الاونر)
           </h2>
           <p className="text-sm text-ink-400" style={{ marginBottom: 16 }}>
-            {profile.full_name}
+            غيّر الاسم أو الإيميل أو الباسورد بتاعك.
           </p>
           <div className="max-w-md">
-            <ChangePasswordForm userId={profile.id} />
+            <EditAccountForm
+              userId={profile.id}
+              initialName={profile.full_name}
+              initialEmail={session?.user.email ?? ''}
+              isSelf
+            />
           </div>
         </section>
       )}
@@ -476,8 +549,7 @@ export default function Settings() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-          مقدرتش أحمّل الحسابات. اتأكد إنك شغّلت ملفات الـ SQL وإنك داخل بحساب
-          المناجر.
+في مشكلة
         </p>
       )}
 

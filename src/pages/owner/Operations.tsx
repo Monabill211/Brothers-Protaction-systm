@@ -39,8 +39,6 @@ type Invoice = {
   expenses: { description: string; amount: number }[]
 }
 
-const BRANCH_ORDER = ['الفرع الأول', 'الفرع الثاني', 'الفرع الثالث']
-
 // Tailwind للـ layout والألوان بس، والـ padding/margin/gap كلها inline
 const cardClass = 'rounded-2xl border border-ink-700 bg-ink-900'
 
@@ -124,14 +122,13 @@ async function fetchInvoices(from: Date, to: Date): Promise<Invoice[]> {
 }
 
 async function fetchBranches(): Promise<Branch[]> {
-  const { data, error } = await supabase.from('branches').select('id, name')
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id, name')
+    .order('position', { ascending: true })
   if (error) throw error
 
-  return ([...(data ?? [])] as Branch[]).sort((a, b) => {
-    const ia = BRANCH_ORDER.indexOf(a.name)
-    const ib = BRANCH_ORDER.indexOf(b.name)
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-  })
+  return (data ?? []) as Branch[]
 }
 
 // ---------- حسابات ----------
@@ -539,8 +536,7 @@ export default function Operations() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-          مقدرتش أحمّل العمليات. اتأكد إنك داخل بحساب المناجر وإن ملفات الـ SQL
-          اتشغلت.
+في مشكلة
         </p>
       )}
 

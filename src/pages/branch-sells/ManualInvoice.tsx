@@ -379,7 +379,7 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
         <RowEditor
           rows={lines}
           onChange={setLines}
-          descriptionPlaceholder="الخدمة (مثلاً: عزل حراري )"
+          descriptionPlaceholder="الخدمة (مثلاً: غسيل عربية)"
           addLabel="إضافة بند"
         />
       </section>

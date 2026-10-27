@@ -3,7 +3,14 @@
 // Uses the service_role key, which exists ONLY on the server (injected by Supabase).
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-type Admin = ReturnType<typeof createClient>
+// عميل بصلاحية كاملة (service_role)، بيشتغل هنا على السيرفر بس
+function makeAdmin(url: string, serviceKey: string) {
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
+
+type Admin = ReturnType<typeof makeAdmin>
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,9 +47,7 @@ Deno.serve(async (req) => {
     if (userError || !userData.user) return json({ error: 'غير مصرح' }, 401)
     const callerId = userData.user.id
 
-    const admin = createClient(url, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
+    const admin = makeAdmin(url, serviceKey)
 
     // 2) لازم يكون مناجر (owner)
     const { data: callerProfile } = await admin
@@ -56,8 +61,10 @@ Deno.serve(async (req) => {
 
     const body = await req.json()
     if (body?.action === 'create') return await createAccount(admin, body)
-    if (body?.action === 'set-password') {
-      return await setPassword(admin, callerId, body)
+    // update-account: يغيّر الاسم و/أو الإيميل و/أو الباسورد (اللي يتبعت بس)
+    // set-password: الاسم القديم، بيشتغل زي update-account
+    if (body?.action === 'update-account' || body?.action === 'set-password') {
+      return await updateAccount(admin, callerId, body)
     }
     return json({ error: 'طلب غير معروف' }, 400)
   } catch (err) {
@@ -130,15 +137,32 @@ async function createAccount(admin: Admin, body: Record<string, unknown>) {
   return json({ ok: true, user_id: userId })
 }
 
-async function setPassword(
+async function updateAccount(
   admin: Admin,
   callerId: string,
   body: Record<string, unknown>
 ) {
   const userId = String(body.user_id ?? '')
+
+  const hasName = body.full_name !== undefined && body.full_name !== null
+  const hasEmail = body.email !== undefined && body.email !== null
+  const hasPassword =
+    body.password !== undefined &&
+    body.password !== null &&
+    String(body.password) !== ''
+
+  const fullName = String(body.full_name ?? '').trim()
+  const email = String(body.email ?? '').trim().toLowerCase()
   const password = String(body.password ?? '')
 
-  if (password.length < 6) {
+  if (!hasName && !hasEmail && !hasPassword) {
+    return json({ error: 'مفيش حاجة اتغيّرت' }, 400)
+  }
+  if (hasName && !fullName) return json({ error: 'اكتب الاسم' }, 400)
+  if (hasEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ error: 'الإيميل مش مظبوط' }, 400)
+  }
+  if (hasPassword && password.length < 6) {
     return json({ error: 'الباسورد لازم يكون 6 حروف على الأقل' }, 400)
   }
 
@@ -149,23 +173,66 @@ async function setPassword(
     .maybeSingle()
   if (!target) return json({ error: 'الحساب مش موجود' }, 404)
 
-  // المناجر يغيّر باسورد مدير الفرع والسيلز وباسورده هو بس
+  // المناجر يعدّل مدير الفرع والسيلز وحسابه هو بس
   const allowed = STAFF_ROLES.includes(target.role) || target.id === callerId
-  if (!allowed) return json({ error: 'مينفعش تغيّر باسورد الحساب ده' }, 403)
+  if (!allowed) return json({ error: 'مينفعش تعدّل الحساب ده' }, 403)
 
-  const { error } = await admin.auth.admin.updateUserById(userId, { password })
-  if (error) return json({ error: 'مقدرتش أغيّر الباسورد' }, 400)
+  // 1) بيانات الدخول (الإيميل والباسورد)
+  if (hasEmail || hasPassword) {
+    const attrs: { email?: string; password?: string; email_confirm?: boolean } =
+      {}
+    if (hasEmail) {
+      attrs.email = email
+      attrs.email_confirm = true
+    }
+    if (hasPassword) attrs.password = password
 
-  const { error: credError } = await admin.from('user_credentials').upsert({
-    user_id: userId,
-    password_plain: password,
-    updated_at: new Date().toISOString(),
-  })
-  if (credError) {
-    return json(
-      { error: 'الباسورد اتغيّر بس مقدرتش أحدّث النسخة المعروضة' },
-      500
-    )
+    const { error } = await admin.auth.admin.updateUserById(userId, attrs)
+    if (error) {
+      const msg = (error.message ?? '').toLowerCase()
+      const used = msg.includes('already') || msg.includes('registered')
+      return json(
+        {
+          error: used
+            ? 'الإيميل ده مستخدم قبل كده'
+            : 'مقدرتش أغيّر بيانات الدخول',
+        },
+        400
+      )
+    }
+  }
+
+  // 2) الاسم
+  if (hasName) {
+    const { error } = await admin
+      .from('profiles')
+      .update({ full_name: fullName })
+      .eq('id', userId)
+    if (error) {
+      return json({ error: 'بيانات الدخول اتغيّرت بس مقدرتش أغيّر الاسم' }, 500)
+    }
+  }
+
+  // 3) النسخة اللي بتظهر للمناجر في الإعدادات
+  if (hasEmail || hasPassword) {
+    const patch: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (hasEmail) patch.email = email
+    if (hasPassword) patch.password_plain = password
+
+    const { error } = hasPassword
+      ? await admin
+          .from('user_credentials')
+          .upsert({ user_id: userId, ...patch })
+      : await admin.from('user_credentials').update(patch).eq('user_id', userId)
+
+    if (error) {
+      return json(
+        { error: 'البيانات اتغيّرت بس مقدرتش أحدّث النسخة المعروضة' },
+        500
+      )
+    }
   }
 
   return json({ ok: true })

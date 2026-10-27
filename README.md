@@ -22,7 +22,7 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_...
 
 ## Supabase
 
-1. في **SQL Editor** شغّل الملفات اللي في `supabase/sql/` بالترتيب (01 → 12)، واحد واحد.
+1. في **SQL Editor** شغّل الملفات اللي في `supabase/sql/` بالترتيب (01 → 13)، واحد واحد.
 2. اعمل يوزر المناجر من Authentication ← Users ← Add user (فعّل Auto Confirm User)، وبعدين شغّل:
 
 ```sql
@@ -37,6 +37,7 @@ values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
    (Edge Functions ← Deploy a new function ← Via Editor، وقفل Verify JWT).
    الـ Dashboard بيدّيها اسم تلقائي (مثلاً `rapid-responder`)، فلو اسمها مختلف عن اللي في
    `src/pages/owner/Settings.tsx` (دالة `callManageUser`) غيّر الاسم هناك.
+   أي تعديل في كود الـ Function لازم ترفعه تاني (Edge Functions ← الـ Function ← Code ← Deploy updates).
 4. من صفحة **الإعدادات** عند المناجر اعمل حساب مدير الفرع وحساب السيلز لكل فرع.
 
 ## النشر على Vercel
@@ -52,7 +53,7 @@ values ('UUID-بتاع-اليوزر', 'email@example.com', 'الباسورد');
 |---|---|---|
 | المناجر | `/owner/finance` | الملخصات المالية (يومي/أسبوعي/شهري/سنوي لكل فرع) |
 | المناجر | `/owner/operations` | العمليات (كل الفواتير: مين عمل إيه والصافي) |
-| المناجر | `/owner/settings` | حسابات مدير الفرع والسيلز وتغيير الباسوردات |
+| المناجر | `/owner/settings` | حسابات مدير الفرع والسيلز لكل فرع، وتعديل الاسم والإيميل والباسورد (حسابهم وحساب المناجر نفسه) |
 | مدير الفرع | `/branch/employees` | الموظفين واليومية، ونسب الوش والضهر والجنب ونص عزل وعزل كامل وفك وتركيب |
 | مدير الفرع | `/branch/payroll` | القبض الأسبوعي (اعتماد + طباعة PDF) |
 | مدير الفرع | `/branch/expenses` | المصروفات مع السبب |

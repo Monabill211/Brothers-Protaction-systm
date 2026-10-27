@@ -68,7 +68,7 @@ function errorMessage(e: unknown) {
   if (msg.includes('customer not found')) return 'العميل مش موجود في فرعك'
   if (msg.includes('not allowed'))
     return 'الصفحة دي للسيلز ومدير الفرع بس'
-  return 'مقدرتش أحفظ الفاتورة. اتأكد إنك داخل بحساب سيلز أو مدير فرع'
+  return 'مقدرتش أحفظ الفاتورة. اتأكد إن ملفات 08 و12 اتشغّلت وإنك داخل بحساب سيلز أو مدير فرع'
 }
 
 // ---------- الداتا ----------
