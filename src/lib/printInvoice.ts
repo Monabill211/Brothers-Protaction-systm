@@ -4,7 +4,6 @@ import { SECTION_LABEL } from './sections'
 // أسماء ملفات اللوجو والـ QR الموجودة في فولدر public
 const LOGO_BADGE = '/logo-badge.png'
 const LOGO_WORDMARK = '/logo-wordmark.webp'
-const QR_CODE_IMAGE = '/qr-code.png'
 
 export type PrintableInvoice = {
   invoiceNo: number
@@ -132,7 +131,6 @@ function header(inv: PrintableInvoice, title: string) {
 
 // فاتورة العميل (التاريخ، بيانات العميل، بيانات العربية، اسم الرول/الخدمة، الإجمالي، و QR تفعيل الكود)
 export function printCustomerInvoice(inv: PrintableInvoice) {
-  const origin = window.location.origin
 
   // اسم الرول المسحوب من المخزون (أو البنود المكتوبة يدوياً في الفاتورة العادية لو مفيش رول محدد)
   const rollOrServiceName =
