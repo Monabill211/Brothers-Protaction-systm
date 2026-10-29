@@ -5,7 +5,7 @@
 --    no longer depends on the branch NAME. That lets the owner rename branches
 --    safely.
 -- 2) Renames the branches:
---      position 1 -> مهندسين
+--      position 1 -> المهندسين
 --      position 2 -> التجمع
 --      position 3 -> الشيخ زايد
 -- 3) finance_summary now also returns `branch_position` (the app sorts by it).
@@ -39,7 +39,7 @@ update public.branches b
  where b.id = r.id;
 
 -- the new names (by position, so this can be re-run)
-update public.branches set name = 'مهندسين'    where position = 1;
+update public.branches set name = 'المهندسين'    where position = 1;
 update public.branches set name = 'التجمع'     where position = 2;
 update public.branches set name = 'الشيخ زايد' where position = 3;
 
