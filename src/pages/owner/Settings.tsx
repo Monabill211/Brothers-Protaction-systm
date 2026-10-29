@@ -526,7 +526,7 @@ export default function Settings() {
           style={pad(20)}
         >
           <h2 className="font-bold" style={{ marginBottom: 4 }}>
-            حسابك (الاونر)
+            حسابك (المناجر)
           </h2>
           <p className="text-sm text-ink-400" style={{ marginBottom: 16 }}>
             غيّر الاسم أو الإيميل أو الباسورد بتاعك.
@@ -549,7 +549,8 @@ export default function Settings() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-في مشكلة
+          مقدرتش أحمّل الحسابات. اتأكد إنك شغّلت ملفات الـ SQL وإنك داخل بحساب
+          المناجر.
         </p>
       )}
 

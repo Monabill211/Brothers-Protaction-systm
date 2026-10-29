@@ -54,7 +54,7 @@ export default function Login() {
 
     if (profileError || !home) {
       await supabase.auth.signOut()
-      toast.error('الحساب ده مش متسجل في السيستم، كلّم الاونر')
+      toast.error('الحساب ده مش متسجل في السيستم، كلّم المناجر')
       return
     }
 
@@ -159,6 +159,13 @@ export default function Login() {
             {isSubmitting ? 'جاري الدخول...' : 'دخول'}
           </button>
         </form>
+
+        <p
+          className="text-center text-xs text-ink-400"
+          style={{ marginTop: 16 }}
+        >
+          نسخة: <span dir="ltr">{__APP_VERSION__}</span>
+        </p>
       </div>
     </main>
   )

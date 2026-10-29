@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { toast } from 'sonner'
+import { MdDeleteOutline } from 'react-icons/md'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
@@ -257,6 +258,36 @@ function ItemCard({ item }: { item: Item }) {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('inventory_items')
+        .delete()
+        .eq('id', item.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('تم مسح الصنف')
+      queryClient.invalidateQueries({ queryKey: ['inventory-items'] })
+    },
+    onError: (e) => {
+      console.error(e)
+      toast.error('مقدرتش أمسح الصنف')
+    },
+  })
+
+  function remove() {
+    const left =
+      item.quantity > 0 ? `\nلسه فيه ${fmt(item.quantity)} ${item.unit} في المخزون.` : ''
+    if (
+      window.confirm(
+        `تمسح الصنف "${item.name}" وسجل حركته؟${left}\nالمسح نهائي ومينفعش يتراجع عنه.`
+      )
+    ) {
+      deleteMutation.mutate()
+    }
+  }
+
   function toggle(next: Exclude<Panel, null>) {
     setPanel((p) => (p === next ? null : next))
     setQty('')
@@ -410,6 +441,17 @@ function ItemCard({ item }: { item: Item }) {
           ))}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={remove}
+        disabled={deleteMutation.isPending}
+        className="flex items-center self-start text-sm font-semibold text-brand-400 hover:underline disabled:opacity-60"
+        style={{ gap: 4 }}
+      >
+        <MdDeleteOutline size={18} />
+        مسح الصنف
+      </button>
     </div>
   )
 }

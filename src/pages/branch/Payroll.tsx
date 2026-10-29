@@ -21,6 +21,14 @@ import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
 import { SECTION_LABEL, SECTION_ORDER, type Section } from '../../lib/sections'
+import { BRAND } from '../../lib/brand'
+import {
+  bandHeader,
+  esc,
+  footerHtml,
+  num,
+  openPrintWindow,
+} from '../../lib/printTheme'
 
 type Employee = {
   id: string
@@ -211,15 +219,6 @@ function slipFromRun(emp: Employee, run: RunRow): Slip {
 
 // ---------- الطباعة / PDF ----------
 
-const esc = (s: string) =>
-  s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-
-const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
-
 function slipHtml(s: Slip, branchName: string, period: string) {
   const workRows = s.workLines.length
     ? s.workLines
@@ -234,30 +233,34 @@ function slipHtml(s: Slip, branchName: string, period: string) {
 
   return `
   <section class="page">
-    <header>
-      <div>
-        <h1>Brothers Car Protection</h1>
-        <p class="muted">${esc(branchName)}</p>
-      </div>
-      <div class="period">
-        <strong>كشف قبض أسبوعي</strong>
-        <p class="muted">${esc(period)}</p>
-      </div>
-    </header>
+    ${bandHeader({ title: 'كشف قبض أسبوعي', subtitle: period })}
 
-    <h2>الموظف: ${esc(s.employee.full_name)}</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="label">الموظف</div>
+        <div class="value">${esc(s.employee.full_name)}</div>
+      </div>
+      <div class="card">
+        <div class="label">أيام الحضور</div>
+        <div class="value">${s.days} يوم</div>
+      </div>
+      <div class="card">
+        <div class="label">اليومية</div>
+        <div class="value" dir="ltr" style="text-align:right">${num(s.dailyRate)} ج.م</div>
+      </div>
+    </div>
 
     <h3>الحضور</h3>
     <table>
       <thead><tr><th>عدد الأيام</th><th>اليومية</th><th>المبلغ</th></tr></thead>
-      <tbody><tr><td>${s.days}</td><td dir="ltr">${num(s.dailyRate)}</td><td dir="ltr">${num(
-        s.daysAmount
-      )}</td></tr></tbody>
+      <tbody><tr><td>${s.days}</td><td dir="ltr">${num(
+        s.dailyRate
+      )}</td><td dir="ltr">${num(s.daysAmount)}</td></tr></tbody>
     </table>
 
     <h3>الشغل</h3>
     <table>
-      <thead><tr><th>الجزء</th><th>العدد</th><th>النسبة</th><th>المبلغ</th></tr></thead>
+      <thead><tr><th>الجزء / الخدمة</th><th>العدد</th><th>النسبة</th><th>المبلغ</th></tr></thead>
       <tbody>${workRows}</tbody>
       <tfoot><tr><td colspan="3">إجمالي الشغل</td><td dir="ltr">${num(
         s.workAmount
@@ -266,62 +269,27 @@ function slipHtml(s: Slip, branchName: string, period: string) {
 
     <div class="total">
       <span>الإجمالي المستحق</span>
-      <strong dir="ltr">${num(s.total)} ج.م</strong>
+      <span class="amount" dir="ltr">${num(s.total)} ج.م</span>
     </div>
 
+    <div class="note">${esc(BRAND.payslipNote)}</div>
+
     <div class="sign">
-      <span>توقيع الموظف: ________________</span>
-      <span>توقيع المسؤول: ________________</span>
+      <div>توقيع الموظف</div>
+      <div>توقيع المسؤول</div>
     </div>
+
+    <p class="thanks">${esc(BRAND.payslipThanks)}</p>
+
+    ${footerHtml(branchName)}
   </section>`
 }
 
 function printSlips(slips: Slip[], branchName: string, period: string) {
-  const win = window.open('', '_blank')
-  if (!win) {
-    toast.error('المتصفح منع النافذة. اسمح بالـ pop-ups للموقع وجرّب تاني')
-    return
-  }
-
-  const doc = `<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8" />
-<title>كشف قبض - ${esc(period)}</title>
-<style>
-  @page { size: A4; margin: 14mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Tahoma, Arial, sans-serif; color: #111; margin: 0; }
-  .page { page-break-after: always; padding: 8px; }
-  .page:last-child { page-break-after: auto; }
-  header { display: flex; justify-content: space-between; align-items: flex-start;
-           border-bottom: 3px solid #c8102e; padding-bottom: 12px; margin-bottom: 20px; }
-  h1 { margin: 0; font-size: 22px; color: #c8102e; }
-  h2 { font-size: 20px; margin: 0 0 16px; }
-  h3 { font-size: 15px; margin: 18px 0 8px; }
-  p { margin: 4px 0 0; }
-  .muted { color: #666; font-size: 13px; }
-  .period { text-align: left; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: right; }
-  th { background: #f3f3f3; }
-  tfoot td { font-weight: bold; background: #fafafa; }
-  .total { display: flex; justify-content: space-between; align-items: center;
-           margin-top: 22px; padding: 14px 16px; border: 2px solid #111; font-size: 18px; }
-  .sign { display: flex; justify-content: space-between; margin-top: 60px; font-size: 14px; }
-</style>
-</head>
-<body>
-${slips.map((s) => slipHtml(s, branchName, period)).join('')}
-</body>
-</html>`
-
-  win.document.open()
-  win.document.write(doc)
-  win.document.close()
-  win.focus()
-  // بعد ما يتفتح اختار "Save as PDF" من نافذة الطباعة
-  setTimeout(() => win.print(), 400)
+  openPrintWindow(
+    `كشف قبض - ${period}`,
+    slips.map((s) => slipHtml(s, branchName, period)).join('')
+  )
 }
 
 // ---------- مكونات صغيرة ----------
@@ -677,7 +645,7 @@ export default function Payroll() {
           <p className="text-xs text-ink-400">
             الحضور بيتحسب من تسجيل السيلز للموظفين، والشغل من الفواتير. اعتمد
             كل موظف لوحده من الكارت بتاعه، وبعد الاعتماد الأرقام بتتثبّت وبتظهر
-            في الملخصات المالية بتاعت الاونر. في نافذة الطباعة اختار
+            في الملخصات المالية بتاعت المناجر. في نافذة الطباعة اختار
             &quot;Save as PDF&quot; عشان تطلع ملف PDF.
           </p>
         </>

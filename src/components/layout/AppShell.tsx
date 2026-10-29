@@ -117,6 +117,12 @@ export default function AppShell() {
             <MdLogout size={22} />
             تسجيل الخروج
           </button>
+          <p
+            className="text-xs text-ink-400"
+            style={{ paddingLeft: 12, paddingRight: 12, paddingTop: 8 }}
+          >
+            نسخة: <span dir="ltr">{__APP_VERSION__}</span>
+          </p>
         </div>
       </aside>
 

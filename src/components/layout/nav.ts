@@ -6,6 +6,7 @@ import {
   MdEventAvailable,
   MdHome,
   MdInventory2,
+  MdLock,
   MdPayments,
   MdPersonSearch,
   MdReceiptLong,
@@ -21,7 +22,7 @@ export type NavItem = {
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
-  owner: 'الاونر',
+  owner: 'المناجر',
   branch_manager: 'مدير الفرع',
   sales: 'السيلز',
 }
@@ -80,6 +81,12 @@ export const NAV: Record<Role, NavItem[]> = {
       label: 'القبض الأسبوعي',
       description: 'PDF بقبض كل موظف بالتفاصيل',
       icon: MdReceiptLong,
+    },
+    {
+      to: '/branch/closing',
+      label: 'التقفيل الأسبوعي',
+      description: 'كل الفلوس اللي دخلت وخرجت في الأسبوع: فواتير ومصروفات وقبض',
+      icon: MdLock,
     },
   ],
   sales: [

@@ -1,5 +1,5 @@
 -- =====================================================
--- Brothers Protection | 01 - Owner (الاونر) tables
+-- Brothers Protection | 01 - Owner (المناجر) tables
 -- Run this whole file in: Supabase > SQL Editor
 -- =====================================================
 
@@ -97,7 +97,7 @@ create policy "owner: full access to credentials"
 --    (the SQL Editor bypasses RLS, so this works)
 -- =====================================================
 -- insert into public.profiles (id, full_name, role)
--- values ('PUT-OWNER-UUID-HERE', 'اسم الاونر', 'owner');
+-- values ('PUT-OWNER-UUID-HERE', 'اسم المناجر', 'owner');
 --
 -- insert into public.user_credentials (user_id, password_plain)
 -- values ('PUT-OWNER-UUID-HERE', 'THE-PASSWORD-YOU-SET');

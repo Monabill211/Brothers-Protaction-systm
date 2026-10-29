@@ -8,6 +8,7 @@ import Finance from './pages/owner/Finance'
 import Operations from './pages/owner/Operations'
 import Employees from './pages/branch/Employees'
 import Payroll from './pages/branch/Payroll'
+import WeeklyClosing from './pages/branch/Closing'
 import Expenses from './pages/branch/Expenses'
 import Inventory from './pages/branch/Inventory'
 import Attendance from './pages/branch-sells/Attendance'
@@ -28,6 +29,7 @@ const PAGES: Record<string, ReactElement> = {
   '/branch/new-invoice': <NewInvoice />,
   '/branch/employees': <Employees />,
   '/branch/payroll': <Payroll />,
+  '/branch/closing': <WeeklyClosing />,
   '/branch/expenses': <Expenses />,
   '/branch/inventory': <Inventory />,
   '/branch-sells/attendance': <Attendance />,

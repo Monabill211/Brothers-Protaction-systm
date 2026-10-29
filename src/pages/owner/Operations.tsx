@@ -536,7 +536,8 @@ export default function Operations() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-في مشكلة
+          مقدرتش أحمّل العمليات. اتأكد إنك داخل بحساب المناجر وإن ملفات الـ SQL
+          اتشغلت.
         </p>
       )}
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { MdCheck, MdClose, MdEdit } from 'react-icons/md'
+import { MdCheck, MdClose, MdDeleteOutline, MdEdit } from 'react-icons/md'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
@@ -317,6 +317,37 @@ function EmployeeCard({ employee }: { employee: Employee }) {
     onError: fail,
   })
 
+  // مسح نهائي: بيشتغل بس لو الموظف ماعندوش حضور أو شغل أو قبض متسجل
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', employee.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('تم مسح الموظف')
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    },
+    onError: (e) => {
+      if ((e as { code?: string })?.code === '23503') {
+        toast.error(
+          'الموظف ده عنده حضور أو شغل أو قبض متسجل، فمينفعش يتمسح. اضغط "إيقاف" بدل المسح'
+        )
+      } else {
+        console.error(e)
+        toast.error('مقدرتش أمسح الموظف')
+      }
+    },
+  })
+
+  function remove() {
+    if (window.confirm(`تمسح الموظف "${employee.full_name}" نهائي؟`)) {
+      deleteMutation.mutate()
+    }
+  }
+
   function save(e: FormEvent) {
     e.preventDefault()
     const rate = toNumber(dailyRate)
@@ -419,6 +450,17 @@ function EmployeeCard({ employee }: { employee: Employee }) {
             >
               {employee.is_active ? 'إيقاف' : 'تفعيل'}
             </button>
+            <button
+              type="button"
+              disabled={deleteMutation.isPending}
+              onClick={remove}
+              aria-label="مسح الموظف"
+              className="flex items-center rounded-lg border border-brand-700 text-sm font-semibold text-brand-400 transition hover:bg-brand-900/40 disabled:opacity-60"
+              style={{ ...pad(10, 14), gap: 6 }}
+            >
+              <MdDeleteOutline size={18} />
+              مسح
+            </button>
           </div>
         </>
       )}
@@ -456,7 +498,7 @@ export default function Employees() {
           className="rounded-lg border border-brand-700 bg-brand-900/40 text-sm text-brand-100"
           style={pad(16)}
         >
-          مقدرتش أحمّل البيانات. اتأكد إنك داخل بحساب مدير الفرع (مش الاونر) وإن
+          مقدرتش أحمّل البيانات. اتأكد إنك داخل بحساب مدير الفرع (مش المناجر) وإن
           ملفات الـ SQL اتشغلت.
         </p>
       )}
