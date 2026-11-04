@@ -3,7 +3,8 @@ import { SECTION_LABEL } from './sections'
 
 // أسماء ملفات اللوجو والـ QR الموجودة في فولدر public
 const LOGO_BADGE = '/logo-badge.png'
-const LOGO_WORDMARK = '/logo-wordmark.webp'
+// const LOGO_WORDMARK = '/logo-wordmark.webp'
+const logo = '/6005798623251206230 (1).webp'
 
 export type PrintableInvoice = {
   invoiceNo: number
@@ -117,7 +118,7 @@ function header(inv: PrintableInvoice, title: string) {
     <div class="brand">
       <img src="${esc(origin + LOGO_BADGE)}" alt="Brothers Logo" class="brand-logo" onerror="this.style.display='none'" />
       <div>
-        <img src="${esc(origin + LOGO_WORDMARK)}" alt="Brothers" class="brand-wordmark" onerror="this.style.display='none'" />
+        <img src="${esc(origin + logo)}" alt="Brothers" class="brand-wordmark" onerror="this.style.display='none'" />
         <h1>Brothers Car Protection</h1>
         <p class="muted">${esc(inv.branchName)}</p>
       </div>
@@ -161,9 +162,9 @@ export function printCustomerInvoice(inv: PrintableInvoice) {
       </div>
     </div>
 
-    <h3>بيانات الخدمة / الرول</h3>
+    <h3>بيانات الخدمة  </h3>
     <table>
-      <thead><tr><th>اسم الرول / الخدمة المنفذة</th><th>الفرع المنفذ</th></tr></thead>
+      <thead><tr><th>  الخدمة المنفذة</th><th>الفرع المنفذ</th></tr></thead>
       <tbody>
         <tr>
           <td><strong>${esc(rollOrServiceName)}</strong></td>
@@ -181,7 +182,7 @@ export function printCustomerInvoice(inv: PrintableInvoice) {
 
     <div class="cert-banner">
       <strong>✔ تم التركيب بواسطة فروع  (Brothers Car Protection) المعتمدة</strong>
-      تم تركيب وتنفيذ (${esc(rollOrServiceName)}) داخل فروع  Brothers المعتمدة على يد فنيين متخصصين وباستخدام خامات ورولات أصلية معتمدة وفق أعلى معايير الجودة وحماية السيارات، وقد تم فحص السيارة ومراجعتها بالكامل قبل التسليم.
+      تم تركيب وتنفيذ (${esc(rollOrServiceName)}) داخل فروع  Brothers المعتمدة على يد فنيين متخصصين وباستخدام خامات ورولات أصلية معتمدة وفقا لأعلى معايير الجودة وحماية السيارات، وقد تم فحص السيارة ومراجعتها بالكامل قبل التسليم.
     </div>
 
     <div class="care-box">

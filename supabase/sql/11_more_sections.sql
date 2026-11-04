@@ -3,7 +3,7 @@
 -- Run AFTER 01..10
 -- Adds three services that employees get a fixed rate for:
 --   half_insulation = نص عزل
---   full_insulation = عزل كامل
+--   full_insulation = عزل 2
 --   remove_install  = فك وتركيب
 -- (the existing four stay: front, back, side_one, side_two)
 -- Safe to run more than once. Existing data is not touched.

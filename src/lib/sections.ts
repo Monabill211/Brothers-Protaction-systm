@@ -15,7 +15,7 @@ export const SECTIONS: { key: Section; label: string }[] = [
   { key: 'side_one', label: 'جنب واحد' },
   { key: 'side_two', label: 'جنب اتنين' },
   { key: 'half_insulation', label: 'نص عزل' },
-  { key: 'full_insulation', label: 'عزل كامل' },
+  { key: 'full_insulation', label: 'عزل 2' },
   { key: 'remove_install', label: 'فك وتركيب' },
 ]
 
