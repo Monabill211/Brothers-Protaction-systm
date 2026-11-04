@@ -3,8 +3,6 @@ import { SECTION_LABEL } from './sections'
 
 // أسماء ملفات اللوجو والـ QR الموجودة في فولدر public
 const LOGO_BADGE = '/logo-badge.png'
-// const LOGO_WORDMARK = '/logo-wordmark.webp'
-const logo = '/6005798623251206230 (1).webp'
 
 export type PrintableInvoice = {
   invoiceNo: number
@@ -118,7 +116,6 @@ function header(inv: PrintableInvoice, title: string) {
     <div class="brand">
       <img src="${esc(origin + LOGO_BADGE)}" alt="Brothers Logo" class="brand-logo" onerror="this.style.display='none'" />
       <div>
-        <img src="${esc(origin + logo)}" alt="Brothers" class="brand-wordmark" onerror="this.style.display='none'" />
         <h1>Brothers Car Protection</h1>
         <p class="muted">${esc(inv.branchName)}</p>
       </div>
