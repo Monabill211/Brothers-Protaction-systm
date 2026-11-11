@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/auth-context'
 import { centerX, pad } from '../../lib/spacing'
 import { money } from '../../lib/format'
+import { normalizeDigits } from '../../lib/search'
 import MoneyInput from '../../components/MoneyInput'
 import CustomerPicker, {
   type CustomerHit,
@@ -135,6 +136,17 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
   // العربية (اختياري)
   const [car, setCar] = useState('')
   const [plate, setPlate] = useState('')
+  const [carYear, setCarYear] = useState('')
+  const [carColor, setCarColor] = useState('')
+
+  // سنة الصنع: 4 أرقام (ممكن تتكتب بأرقام عربي). اختياري.
+  const yearText = normalizeDigits(carYear.trim())
+  const yearNum = yearText === '' ? null : Number(yearText)
+  const yearInvalid =
+    yearNum !== null &&
+    (!Number.isInteger(yearNum) ||
+      yearNum < 1950 ||
+      yearNum > new Date().getFullYear() + 1)
 
   // البنود اللي بتتكتب بإيد السيلز + مصروفات (اختياري)
   const [lines, setLines] = useState<Row[]>(() => [newRow()])
@@ -180,6 +192,8 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
         p_customer_phone: mode === 'new' ? newPhone.trim() : null,
         p_car_model: car.trim() || null,
         p_plate_number: plate.trim() || null,
+        p_car_year: yearNum,
+        p_car_color: carColor.trim() || null,
         p_notes: notes.trim() || null,
         p_lines: completeLines.map((r) => ({
           description: r.description.trim(),
@@ -207,6 +221,8 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
         customerPhone,
         carModel: car.trim(),
         plate: plate.trim(),
+        carYear: yearText,
+        carColor: carColor.trim(),
         price: total,
         notes: notes.trim(),
         work: [],
@@ -239,6 +255,8 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
     setNewPhone('')
     setCar('')
     setPlate('')
+    setCarYear('')
+    setCarColor('')
     setLines([newRow()])
     setExpenses([])
     setNotes('')
@@ -250,6 +268,10 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
 
     if (mode === 'existing' && !picked) {
       toast.error('اختار العميل، أو اختار "عميل جديد"')
+      return
+    }
+    if (yearInvalid) {
+      toast.error('اكتب سنة الصنع صح (مثلاً 2024)')
       return
     }
     if (mode === 'new' && !newName.trim()) {
@@ -402,6 +424,23 @@ export default function ManualInvoice({ typeSwitch }: { typeSwitch: ReactNode })
             value={plate}
             onChange={(e) => setPlate(e.target.value)}
             placeholder="رقم اللوحة"
+            className={inputClass}
+            style={pad(12, 16)}
+          />
+          <input
+            value={carYear}
+            onChange={(e) => setCarYear(e.target.value)}
+            inputMode="numeric"
+            dir="ltr"
+            maxLength={4}
+            placeholder="سنة الصنع (اختياري): 2024"
+            className={`${inputClass} text-left`}
+            style={pad(12, 16)}
+          />
+          <input
+            value={carColor}
+            onChange={(e) => setCarColor(e.target.value)}
+            placeholder="اللون (اختياري): أبيض"
             className={inputClass}
             style={pad(12, 16)}
           />

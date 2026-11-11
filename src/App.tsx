@@ -27,6 +27,7 @@ const PAGES: Record<string, ReactElement> = {
   '/owner/finance': <Finance />,
   '/owner/operations': <Operations />,
   '/branch/new-invoice': <NewInvoice />,
+  '/branch/attendance': <Attendance />,
   '/branch/employees': <Employees />,
   '/branch/payroll': <Payroll />,
   '/branch/closing': <WeeklyClosing />,

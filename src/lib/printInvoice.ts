@@ -1,7 +1,6 @@
 import { toast } from 'sonner'
 import { SECTION_LABEL } from './sections'
 
-// أسماء ملفات اللوجو والـ QR الموجودة في فولدر public
 const LOGO_BADGE = '/logo-badge.png'
 
 export type PrintableInvoice = {
@@ -11,6 +10,8 @@ export type PrintableInvoice = {
   customerName: string
   customerPhone: string
   carModel: string
+   carYear?: string  
+  carColor?: string 
   plate: string
   price: number
   notes: string
@@ -154,9 +155,13 @@ export function printCustomerInvoice(inv: PrintableInvoice) {
       </div>
       <div>
         <h3>بيانات العربية</h3>
+        <h3>بيانات العربية</h3>
         <p><strong>الموديل:</strong> ${esc(inv.carModel || '—')}</p>
+        ${inv.carYear ? `<p><strong>سنة الصنع:</strong> ${esc(inv.carYear)}</p>` : ''}
+        ${inv.carColor ? `<p><strong>اللون:</strong> ${esc(inv.carColor)}</p>` : ''}
         <p><strong>رقم اللوحة:</strong> ${esc(inv.plate || '—')}</p>
       </div>
+        </div>
     </div>
 
     <h3>بيانات الخدمة  </h3>
@@ -228,7 +233,7 @@ export function printInternalInvoice(inv: PrintableInvoice) {
       </div>
       <div>
         <h3>العربية</h3>
-        <p>${esc([inv.carModel, inv.plate].filter(Boolean).join(' - ') || '—')}</p>
+        <p>${esc([inv.carModel, inv.carYear, inv.carColor, inv.plate].filter(Boolean).join(' - ') || '—')}</p>
       </div>
     </div>
 

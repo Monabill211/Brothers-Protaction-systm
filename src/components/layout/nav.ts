@@ -59,6 +59,12 @@ export const NAV: Record<Role, NavItem[]> = {
       icon: MdAttachMoney,
     },
     {
+      to: '/branch/attendance',
+      label: 'الحضور والانصراف',
+      description: 'تسجيل حضور وانصراف موظفي الفرع النهارده',
+      icon: MdEventAvailable,
+    },
+    {
       to: '/branch/employees',
       label: 'الموظفين والنسب',
       description: 'أسماء الموظفين واليومية، ونسب الوش والضهر والجنب والعزل وفك وتركيب',

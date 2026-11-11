@@ -21,6 +21,8 @@ type CustomerInvoice = {
   invoice_no: number
   car_model: string | null
   plate_number: string | null
+  car_year: number | null
+  car_color: string | null
   total_price: number
   notes: string | null
   created_at: string
@@ -84,7 +86,7 @@ async function fetchCustomerInvoices(
   const { data, error } = await supabase
     .from('invoices')
     .select(
-      'id, invoice_no, car_model, plate_number, total_price, notes, created_at, invoice_work(section), invoice_lines(description, position)'
+      'id, invoice_no, car_model, plate_number, car_year, car_color, total_price, notes, created_at, invoice_work(section), invoice_lines(description, position)'
     )
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false })
@@ -104,6 +106,8 @@ async function fetchCustomerInvoices(
       invoice_no: Number(r.invoice_no),
       car_model: (r.car_model as string | null) ?? null,
       plate_number: (r.plate_number as string | null) ?? null,
+      car_year: r.car_year == null ? null : Number(r.car_year),
+      car_color: (r.car_color as string | null) ?? null,
       total_price: Number(r.total_price),
       notes: (r.notes as string | null) ?? null,
       created_at: String(r.created_at),
@@ -213,11 +217,11 @@ function CustomerCard({ customer }: { customer: Customer }) {
                     className="flex flex-col text-sm"
                     style={{ marginTop: 10, gap: 6 }}
                   >
-                    {(inv.car_model || inv.plate_number) && (
+                    {(inv.car_model || inv.car_year || inv.car_color || inv.plate_number) && (
                       <p className="text-ink-400">
                         العربية:{' '}
                         <span className="text-ink-100">
-                          {[inv.car_model, inv.plate_number]
+                          {[inv.car_model, inv.car_year, inv.car_color, inv.plate_number]
                             .filter(Boolean)
                             .join(' • ')}
                         </span>
