@@ -3,7 +3,7 @@ import { MdAdd, MdClose, MdDelete } from 'react-icons/md'
 import { supabase } from '../../lib/supabase'
 import { SECTION_LABEL } from '../../lib/sections'
 import { money } from '../../lib/format'
-
+import type { Invoice, Employee } from './Operations'
 type Props = {
   invoice: Invoice
   employees: Employee[]
