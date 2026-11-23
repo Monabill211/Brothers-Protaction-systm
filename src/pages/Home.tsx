@@ -3,6 +3,7 @@ import { useAuth } from '../auth/auth-context'
 import { ROLE_HOME } from '../auth/roles'
 import { centerX, pad } from '../lib/spacing'
 import { NAV, ROLE_LABEL } from '../components/layout/nav'
+import { WeeklyAlertsPreview } from './branch-sells/Alerts'
 
 export default function Home() {
   const { profile } = useAuth()
@@ -10,7 +11,8 @@ export default function Home() {
 
   // كل مهام الدور ما عدا الرئيسية نفسها
   const cards = NAV[profile.role].filter(
-    (item) => item.to !== ROLE_HOME[profile.role]
+    (item) =>
+      item.to !== ROLE_HOME[profile.role] && !item.to.endsWith('/alerts')
   )
 
   return (
@@ -23,6 +25,10 @@ export default function Home() {
           أهلاً {profile.full_name}، دخلت بصلاحية {ROLE_LABEL[profile.role]}
         </p>
       </section>
+
+      {(profile.role === 'branch_manager' || profile.role === 'sales') && (
+        <WeeklyAlertsPreview />
+      )}
 
       <section
         className="grid sm:grid-cols-2 xl:grid-cols-3"

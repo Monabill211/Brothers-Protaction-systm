@@ -7,6 +7,7 @@ import {
   MdHome,
   MdInventory2,
   MdLock,
+  MdNotificationsActive,
   MdPayments,
   MdPersonSearch,
   MdReceiptLong,
@@ -53,6 +54,12 @@ export const NAV: Record<Role, NavItem[]> = {
   branch_manager: [
     { to: '/branch', label: 'الرئيسية', description: '', icon: MdHome },
     {
+      to: '/branch/alerts',
+      label: 'تنبيهات المتابعة',
+      description: 'كل أسبوع: العملاء اللي عدى على خدمتهم 3 شهور وتفاصيل الفاتورة',
+      icon: MdNotificationsActive,
+    },
+    {
       to: '/branch/new-invoice',
       label: 'فاتورة جديدة',
       description: 'فاتورة حماية أو فاتورة عادية يدوي، زي السيلز',
@@ -97,6 +104,12 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   sales: [
     { to: '/branch-sells', label: 'الرئيسية', description: '', icon: MdHome },
+    {
+      to: '/branch-sells/alerts',
+      label: 'تنبيهات المتابعة',
+      description: 'كل أسبوع: العملاء اللي عدى على خدمتهم 3 شهور وتفاصيل الفاتورة',
+      icon: MdNotificationsActive,
+    },
     {
       to: '/branch-sells/new-invoice',
       label: 'فاتورة جديدة',

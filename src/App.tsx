@@ -13,6 +13,7 @@ import Expenses from './pages/branch/Expenses'
 import Inventory from './pages/branch/Inventory'
 import Attendance from './pages/branch-sells/Attendance'
 import Customers from './pages/branch-sells/Customers'
+import Alerts from './pages/branch-sells/Alerts'
 import NewInvoice from './pages/branch-sells/NewInvoice'
 import SalesExpenses from './pages/branch-sells/Expenses'
 import ProtectedRoute from './auth/ProtectedRoute'
@@ -26,6 +27,7 @@ const ROLES: Role[] = ['owner', 'branch_manager', 'sales']
 const PAGES: Record<string, ReactElement> = {
   '/owner/finance': <Finance />,
   '/owner/operations': <Operations />,
+  '/branch/alerts': <Alerts />,
   '/branch/new-invoice': <NewInvoice />,
   '/branch/attendance': <Attendance />,
   '/branch/employees': <Employees />,
@@ -33,6 +35,7 @@ const PAGES: Record<string, ReactElement> = {
   '/branch/closing': <WeeklyClosing />,
   '/branch/expenses': <Expenses />,
   '/branch/inventory': <Inventory />,
+  '/branch-sells/alerts': <Alerts />,
   '/branch-sells/attendance': <Attendance />,
   '/branch-sells/customers': <Customers />,
   '/branch-sells/new-invoice': <NewInvoice />,
