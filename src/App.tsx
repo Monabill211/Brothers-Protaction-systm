@@ -20,6 +20,7 @@ import ProtectedRoute from './auth/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
 import { ROLE_HOME, type Role } from './auth/roles'
 import { NAV } from './components/layout/nav'
+import { EditInvoiceModal } from './pages/owner/Edting'
 
 const ROLES: Role[] = ['owner', 'branch_manager', 'sales']
 

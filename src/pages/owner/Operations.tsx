@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, isWithinInterval } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import {
   MdChevronLeft,
   MdChevronRight,
+  MdEdit,
   MdExpandLess,
   MdExpandMore,
 } from 'react-icons/md'
@@ -19,15 +20,24 @@ import {
   shift,
   type Period,
 } from '../../lib/periods'
+import { EditInvoiceModal } from './Edting'
 
 type Branch = { id: string; name: string }
 
-type Invoice = {
+export type Employee = {
+  id: string
+  full_name: string
+  branch_id: string | null
+}
+
+export type Invoice = {
   id: string
   invoice_no: number
   branch_id: string
   car_model: string | null
   plate_number: string | null
+  car_year: number | null
+  car_color: string | null
   total_price: number
   notes: string | null
   created_at: string
@@ -35,7 +45,7 @@ type Invoice = {
   customer_phone: string | null
   kind: string
   lines: { description: string; amount: number }[]
-  work: { section: string; rate: number; employee: string }[]
+  work: { employee_id: string; section: string; rate: number; employee: string }[]
   expenses: { description: string; amount: number }[]
 }
 
@@ -61,6 +71,7 @@ function parseInvoice(r: Record<string, unknown>): Invoice {
 
   const work = ((r.invoice_work ?? []) as Record<string, unknown>[]).map(
     (w) => ({
+      employee_id: String(w.employee_id ?? ''),
       section: String(w.section),
       rate: Number(w.rate),
       employee: one<{ full_name?: string }>(w.employees)?.full_name ?? '—',
@@ -89,6 +100,8 @@ function parseInvoice(r: Record<string, unknown>): Invoice {
     branch_id: String(r.branch_id),
     car_model: (r.car_model as string | null) ?? null,
     plate_number: (r.plate_number as string | null) ?? null,
+    car_year: r.car_year == null ? null : Number(r.car_year),
+    car_color: (r.car_color as string | null) ?? null,
     total_price: Number(r.total_price),
     notes: (r.notes as string | null) ?? null,
     created_at: String(r.created_at),
@@ -105,10 +118,10 @@ async function fetchInvoices(from: Date, to: Date): Promise<Invoice[]> {
   const { data, error } = await supabase
     .from('invoices')
     .select(
-      'id, invoice_no, branch_id, car_model, plate_number, total_price, notes, created_at, kind, ' +
+      'id, invoice_no, branch_id, car_model, plate_number, car_year, car_color, total_price, notes, created_at, kind, ' +
         'customers(name, phone), ' +
         'invoice_lines(description, amount, position), ' +
-        'invoice_work(section, rate, employees(full_name)), ' +
+        'invoice_work(employee_id, section, rate, employees(full_name)), ' +
         'invoice_expenses(description, amount)'
     )
     .gte('created_at', from.toISOString())
@@ -129,6 +142,16 @@ async function fetchBranches(): Promise<Branch[]> {
   if (error) throw error
 
   return (data ?? []) as Branch[]
+}
+
+async function fetchEmployees(): Promise<Employee[]> {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id, full_name, branch_id')
+    .order('full_name')
+  if (error) throw error
+
+  return (data ?? []) as Employee[]
 }
 
 // ---------- حسابات ----------
@@ -206,9 +229,11 @@ function Stat({
 function InvoiceCard({
   invoice,
   branchName,
+  onEdit,
 }: {
   invoice: Invoice
   branchName: string
+  onEdit: (inv: Invoice) => void
 }) {
   const [open, setOpen] = useState(false)
   const jobExpenses = jobExpensesOf(invoice)
@@ -363,6 +388,22 @@ function InvoiceCard({
               {invoice.notes && <p>ملاحظات: {invoice.notes}</p>}
             </div>
           )}
+
+          {/* زرار التعديل */}
+          <div
+            className="flex justify-end border-t border-ink-700"
+            style={{ paddingTop: 12 }}
+          >
+            <button
+              type="button"
+              onClick={() => onEdit(invoice)}
+              className="flex items-center rounded-lg border border-brand-600/40 bg-brand-600/15 text-sm font-semibold text-brand-400 transition hover:bg-brand-600/25"
+              style={{ ...pad(8, 14), gap: 6 }}
+            >
+              <MdEdit size={18} />
+              تعديل الفاتورة
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -372,10 +413,12 @@ function InvoiceCard({
 // ---------- الصفحة ----------
 
 export default function Operations() {
+  const queryClient = useQueryClient()
   const [period, setPeriod] = useState<Period>('day')
   const [anchor, setAnchor] = useState(() => new Date())
   const [branchFilter, setBranchFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const [editing, setEditing] = useState<Invoice | null>(null)
 
   const { from, to } = getRange(period, anchor)
   const includesToday = isWithinInterval(new Date(), { start: from, end: to })
@@ -385,12 +428,18 @@ export default function Operations() {
     queryFn: fetchBranches,
   })
 
+  const employeesQuery = useQuery({
+    queryKey: ['employees-list'],
+    queryFn: fetchEmployees,
+  })
+
   const invoicesQuery = useQuery({
     queryKey: ['operations', format(from, 'yyyy-MM-dd'), format(to, 'yyyy-MM-dd')],
     queryFn: () => fetchInvoices(from, to),
   })
 
   const branches = branchesQuery.data ?? []
+  const employees = employeesQuery.data ?? []
   const branchName = (id: string) =>
     branches.find((b) => b.id === id)?.name ?? '—'
 
@@ -570,6 +619,7 @@ export default function Operations() {
                   key={inv.id}
                   invoice={inv}
                   branchName={branchName(inv.branch_id)}
+                  onEdit={setEditing}
                 />
               ))}
             </section>
@@ -580,6 +630,18 @@ export default function Operations() {
             اليوميات والمصروفات العامة، اللي بتظهر في الملخصات المالية.
           </p>
         </>
+      )}
+
+      {editing && (
+        <EditInvoiceModal
+          invoice={editing}
+          employees={employees}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            queryClient.invalidateQueries({ queryKey: ['operations'] })
+          }}
+        />
       )}
     </div>
   )
